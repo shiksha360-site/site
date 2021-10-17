@@ -7,5 +7,5 @@ Site source code
 ### Usage
 
 1. Clone KhalamAcademy/data inside this repo
-2. Run gen_info.py in the data folder
-3. Run manage.py site compilestatic to build site assets
+2. Run manage.py site compilestatic to build site assets
+3. Setup nginx using nginx-cfg.conf as per the comments inside it
