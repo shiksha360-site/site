@@ -27,11 +27,12 @@ def page_kill(session):
 
 
 def get_video_with_js(session, url: str) -> dict:
+    print(f"Selenium scrape triggered on {url}")
     session.get(url)
     return {"title": session.title, "link": url}
 
 def get_video_bs4(url: str) -> dict:
-    print("BS4")
+    print(f"BS4 scrape triggered on {url}")
     html = requests.get(url).text
     soup = BeautifulSoup(html, 'html.parser')
     return {"title": soup.title.string, "link": url}

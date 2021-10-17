@@ -154,11 +154,9 @@ def gen_info():
                             
                         chapter_info["subtopics"] = subtopics
 
-                        # Write all the files to the needed places
+                        # Write info
                         with open(os.path.join(build_chapter_dir, "info.min.json"), "w") as chapter_info_json:
                             common.write_min_json(chapter_info, chapter_info_json)
-                        with open(os.path.join(build_chapter_dir, "res.min.json"), "w") as chapter_res_json:
-                            common.write_min_json(chapter_res, chapter_res_json)
 
                     chapter_listing_path = os.path.join(subject_dir.replace("grades", "build/grades", 1), "chapter_list.json")
                     with open(chapter_listing_path, "w") as chapter_listing_fp:
@@ -190,5 +188,3 @@ def gen_info():
                 "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="hi"))
             }
         }, keystone)
-
-#video_crawler.page_kill(session)
