@@ -2,6 +2,7 @@ from yaml import load, CLoader as Loader, CDumper as Dumper
 import json
 import sys
 import os
+import random
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
@@ -34,3 +35,12 @@ def write_min_json(d: dict, fp):
 
 def remove_ws(s: str) -> str:
     return s.replace("\n", "").replace("  ", "")
+
+def fix_versions(s: str):
+    new_version = random.randint(1, 9)
+    with open(s) as old_index:
+        index = old_index.read()
+        
+    with open(s, "w") as old_index:
+        old_index.write(index.replace("?v=", f"?v={new_version}"))
+
