@@ -57,4 +57,4 @@ def create_new():
     os.mkdir(chapter_path)
 
     shutil.copyfile("templates/chapter_info.yaml", f"{chapter_path}/info.yaml")
-    shutil.copyfile("templates/chapter_resources.yaml", f"{chapter_path}/res.yaml")
+    shutil.copyfile("templates/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")

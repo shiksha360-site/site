@@ -3,3 +3,16 @@ $title-padding: 3px;
 .title {
     padding: $title-padding;
 }
+
+.boards {
+    list-style: none;
+    padding: $title-padding;
+}
+
+ul, li {
+    list-style: none;
+}
+
+#toc {
+    text-align: center;
+}

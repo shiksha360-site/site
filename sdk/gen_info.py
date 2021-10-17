@@ -122,7 +122,7 @@ def gen_info(selenium_scrape: bool = False):
 
                         tags += chapter_info["tags"]
 
-                        chapter_res = common.load_yaml(os.path.join(chapter_dir, "res.yaml"))
+                        chapter_res = common.load_yaml(os.path.join(chapter_dir, "extres.yaml"))
 
                         build_chapter_dir = chapter_dir.replace("grades", "build/grades", 1)
                         pathlib.Path(build_chapter_dir).mkdir(parents=True)
