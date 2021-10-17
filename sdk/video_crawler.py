@@ -8,9 +8,10 @@ from pyvirtualdisplay.abstractdisplay import XStartError
 import signal
 
 started_display = False
-display = Display(visible=0, size=(800, 600))
+display = None
 
 def prepare():
+    display = Display(visible=0, size=(800, 600))
     try:
         display.start()
         started_display = True
