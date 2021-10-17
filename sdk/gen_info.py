@@ -7,9 +7,11 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List
 
 
-def gen_info():
-    global session 
-    session = video_crawler.prepare()
+def gen_info(selenium_scrape: bool = False):
+    if selenium_scrape:
+        session = video_crawler.prepare()
+    else:
+        session = None
 
     # Basic setup
     env = Environment(
@@ -137,13 +139,16 @@ def gen_info():
                                 if value == "$name":
                                     chapter_res[subtopic][key] = chapter_info["name"]
                             
-                                if isinstance(value, dict) and value.get("videos"):
-                                    for i, video in enumerate(value["videos"]):
-                                        if video.get("js-needed"):
+                                if isinstance(value, list):
+                                    for i, video in enumerate(value):
+                                        if not isinstance(video, dict):
+                                            continue
+
+                                        if video.get("js-needed") and selenium_scrape:
                                             vdata = video_crawler.get_video_with_js(session, video["link"])
                                         else:
                                             vdata = video_crawler.get_video_bs4(video["link"])
-                                        value["videos"][i] = vdata
+                                        value[i] = vdata
                             
                             subtopic_name = chapter_res[subtopic]["name"]
                             subtopics[subtopic_name] = subtopic

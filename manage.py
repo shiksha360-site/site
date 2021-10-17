@@ -79,10 +79,14 @@ def data_new():
     create_new.create_new()
 
 @data.command("build")
-def data_build():
+@click.option('--prod', default=False, help='Prod or no prod')
+def data_build(prod):
     """This compile all the chapter yaml files in data into *.min.json's for the site"""
     os.chdir("data")
-    gen_info.gen_info()
+    args = {}
+    if prod:
+        args["selenium_scrape"] = True
+    gen_info.gen_info(**args)
 
 @app.command("push")
 @click.option('--commitmsg', default="Commit", help='Commit message')
