@@ -1,10 +1,13 @@
 import json
 import os
 import shutil
-from sdk import common
+from sdk import common, video_crawler
 import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List
+
+global session 
+session = video_crawler.prepare()
 
 def gen_info():
     # Basic setup
@@ -72,6 +75,8 @@ def gen_info():
                 grade_boards[grade].append(board.lower())
             
                 print(f"Found board {board.upper()}")
+
+                subject_list = []
                     
                 board = board.lower()
                 _, subjects, _ = next(walker)
@@ -81,6 +86,8 @@ def gen_info():
                         continue
 
                     print(f"Found subject {subject} in board {board.upper()}")
+
+                    subject_list.append(subject.lower())
 
                     subject_dir = os.path.join(dirpath, board, subject)
 
@@ -114,15 +121,39 @@ def gen_info():
 
                         chapter_res = common.load_yaml(os.path.join(chapter_dir, "res.yaml"))
 
-                        # Check chapter res and make fixes
-                        for key in chapter_res.keys():
-                            if not chapter_res.get(key):
-                                chapter_res[key] = []
-
-                        # Write all the files to the needed places
                         build_chapter_dir = chapter_dir.replace("grades", "build/grades", 1)
                         pathlib.Path(build_chapter_dir).mkdir(parents=True)
 
+                        # Check chapter res and make fixes
+                        subtopics: Dict[str, str] = {}
+                        for subtopic in chapter_res.keys():
+                            for key in chapter_res[subtopic].keys():
+                                if not chapter_res[subtopic].get(key):
+                                    chapter_res[subtopic][key] = []
+                                
+                                value = chapter_res[subtopic][key]
+
+                                if value == "$name":
+                                    chapter_res[subtopic][key] = chapter_info["name"]
+                            
+                                if isinstance(value, dict) and value.get("videos"):
+                                    for i, video in enumerate(value["videos"]):
+                                        if video.get("js-needed"):
+                                            vdata = video_crawler.get_video_with_js(session, video["link"])
+                                        else:
+                                            vdata = video_crawler.get_video_bs4(video["link"])
+                                        value["videos"][i] = vdata
+                            
+                            subtopic_name = chapter_res[subtopic]["name"]
+                            subtopics[subtopic_name] = subtopic
+
+                            # Make the subtopic file
+                            with open(os.path.join(build_chapter_dir, f"res-{subtopic}.min.json"), "w") as fp:
+                                common.write_min_json(chapter_res[subtopic], fp)
+                            
+                        chapter_info["subtopics"] = subtopics
+
+                        # Write all the files to the needed places
                         with open(os.path.join(build_chapter_dir, "info.min.json"), "w") as chapter_info_json:
                             common.write_min_json(chapter_info, chapter_info_json)
                         with open(os.path.join(build_chapter_dir, "res.min.json"), "w") as chapter_res_json:
@@ -131,7 +162,10 @@ def gen_info():
                     chapter_listing_path = os.path.join(subject_dir.replace("grades", "build/grades", 1), "chapter_list.json")
                     with open(chapter_listing_path, "w") as chapter_listing_fp:
                         common.write_min_json(chapter_listing, chapter_listing_fp)
-                        
+
+                with open(os.path.join("build", dirpath, board, "subject_list.min.json"), "w") as subject_list_fp:  
+                    common.write_min_json(subject_list, subject_list_fp)
+
 
         if common.debug_mode:
             print(dirpath, boards)
@@ -155,3 +189,5 @@ def gen_info():
                 "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="hi"))
             }
         }, keystone)
+
+#video_crawler.page_kill(session)
