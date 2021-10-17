@@ -6,10 +6,11 @@ import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List
 
-global session 
-session = video_crawler.prepare()
 
 def gen_info():
+    global session 
+    session = video_crawler.prepare()
+
     # Basic setup
     env = Environment(
         loader=FileSystemLoader("templates/jinja2"),
