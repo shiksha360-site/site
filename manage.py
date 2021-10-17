@@ -94,7 +94,7 @@ def git_push_all(commitmsg):
     """Push in all submodules"""
     def push():
         os.system("git add -v .")
-        os.system(f"git commit -m {commitmsg}")
+        os.system(f"git commit -m '{commitmsg}'")
         os.system("git push")
 
     push()

@@ -133,3 +133,7 @@ dmypy.json
 
 # Assets prod
 /assets/prod
+
+/secrets
+
+*.log
