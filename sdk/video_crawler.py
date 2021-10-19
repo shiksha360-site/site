@@ -5,9 +5,9 @@ from sdk import common
 from selenium import webdriver
 from pyvirtualdisplay import Display
 from pyvirtualdisplay.abstractdisplay import XStartError
-import signal
 from pathlib import Path
 import orjson
+import os
 
 started_display = False
 display = None
@@ -29,7 +29,7 @@ def page_kill(session):
 
 
 def get_video_with_js(session, url: str) -> dict:
-    cache = Path(f"../tmpstor/url-{url}-js.min.json".replace("/", "@"))
+    cache = Path("../tmpstor") / f"url-{url}-js.min.json".replace("/", "@").replace(".", "*")
     if not cache.exists():
         print(f"Selenium scrape triggered on {url}")
         session.get(url)
@@ -38,11 +38,12 @@ def get_video_with_js(session, url: str) -> dict:
             common.write_min_json(data, cache_fp)
         return data
     else:
+        print(f"Using cached resource {cache}")
         with cache.open() as cache_fp:
             return orjson.loads(cache_fp.read())
 
 def get_video_bs4(url: str) -> dict:
-    cache = Path(f"../tmpstor/url-{url}-bs4.min.json".replace("/", "@"))
+    cache = Path("../tmpstor") / f"url-{url}-bs4.min.json".replace("/", "@").replace(".", "*")
     if not cache.exists():
         print(f"BS4 scrape triggered on {url}")
         html = requests.get(url).text
@@ -52,5 +53,6 @@ def get_video_bs4(url: str) -> dict:
             common.write_min_json(data, cache_fp)
         return data
     else:
+        print(f"Using cached resource {cache}")
         with cache.open() as cache_fp:
             return orjson.loads(cache_fp.read())
