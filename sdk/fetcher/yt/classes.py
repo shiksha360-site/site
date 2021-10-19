@@ -27,7 +27,7 @@ class YoutubeData():
         """Minifies a item"""
         return item
 
-    def get_title_with_kw(self, keywords: Dict[str, int], max_results: int = 5):
+    def get_title_with_kw(self, keywords: Dict[str, int], max_results: int = 5, silent: bool = False):
         """Helper method to get all titles matching a set of keywords where keywords is a map of the keyword to its weightage"""
         keyword_map = {} # Store how many keyword maps
         titles = []
@@ -52,7 +52,8 @@ class YoutubeData():
             else:
                 titles.append(title)
 
-            print(title)
+            if not silent:
+                print(title)
         
         if keyword_map:
             keyword_map = sorted(keyword_map.items(), key=lambda x: x[1]["weight"], reverse=True)

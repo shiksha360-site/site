@@ -6,6 +6,8 @@ from selenium import webdriver
 from pyvirtualdisplay import Display
 from pyvirtualdisplay.abstractdisplay import XStartError
 import signal
+from pathlib import Path
+import orjson
 
 started_display = False
 display = None
@@ -27,12 +29,28 @@ def page_kill(session):
 
 
 def get_video_with_js(session, url: str) -> dict:
-    print(f"Selenium scrape triggered on {url}")
-    session.get(url)
-    return {"title": session.title, "link": url}
+    cache = Path(f"tmpstor/url-{url}-js.min.json".replace("/", "@"))
+    if not cache.exists():
+        print(f"Selenium scrape triggered on {url}")
+        session.get(url)
+        data = {"title": session.title, "link": url}
+        with cache.open("w") as cache_fp:
+            common.write_min_json(data, cache_fp)
+        return data
+    else:
+        with cache.open() as cache_fp:
+            return orjson.loads(cache_fp.read())
 
 def get_video_bs4(url: str) -> dict:
-    print(f"BS4 scrape triggered on {url}")
-    html = requests.get(url).text
-    soup = BeautifulSoup(html, 'html.parser')
-    return {"title": soup.title.string, "link": url}
+    cache = Path(f"tmpstor/url-{url}-bs4.min.json".replace("/", "@"))
+    if not cache.exists():
+        print(f"BS4 scrape triggered on {url}")
+        html = requests.get(url).text
+        soup = BeautifulSoup(html, 'html.parser')
+        data = {"title": soup.title.string, "link": url}
+        with cache.open("w") as cache_fp:
+            common.write_min_json(data, cache_fp)
+        return data
+    else:
+        with cache.open() as cache_fp:
+            return orjson.loads(cache_fp.read())
