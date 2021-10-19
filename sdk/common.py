@@ -7,7 +7,7 @@ import random
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
 def load_yaml(filename: str) -> dict:
-    with open(filename) as file:
+    with open(str(filename)) as file:
         data = load(file, Loader=Loader)
         if debug_mode:
             print(f"Opened YAML ({filename}): ", pformat(data))

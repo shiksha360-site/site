@@ -7,63 +7,18 @@ from pathlib import Path
 import time
 import orjson
 import pickle
-import copy
+import os
+from .classes import YoutubeData, YoutubePlaylist, YoutubePlaylistItem
 
-class YoutubeData():
-    def __init__(self, data, data_type):
-        self.data = copy.deepcopy(data)
-        self.internal_data = self.data[-1]
-        self.data_type = data_type
-        del self.data[-1]
-    
-    def loop(self):
-        for page in self.data:
-            for item in page["items"]:
-                yield item
-    
-    def get_playlists_with_title(self, keywords: Dict[str, int], max_results: int = 5):
-        """Helper method to get all playlists matching a set of keywords where keywords is a map of the keyword to its weightage"""
-        if self.data_type != "channelplaylists":
-            raise NotImplementedError("Not a playlist items response")
-        keyword_map = {} # Store how many keyword maps
-        for item in self.loop():
-            title = item["snippet"]["title"]
-
-            print(item)
-
-            item_min = {
-                "embed": item["player"]["embedHtml"],
-                "id": item["id"],
-                "description": item["snippet"]["description"],
-                "weight": 0
-            }
-
-            keyword_map[title] = item_min
-            
-            title_list = [s.lower() for s in title.split(" ")]
-            for kw, weight in keywords.items():
-                if kw.lower() in title_list:
-                    keyword_map[title]["weight"] += weight
-                elif kw.lower() in title.lower():
-                    # Anywhere in title means 0.5 weightage
-                    keyword_map[title]["weight"] += 0.5*weight
-                
-            if keyword_map[title]["weight"] == 0:
-                del keyword_map[title]
-
-            print(title)
-        
-        if keyword_map:
-            keyword_map = sorted(keyword_map.items(), key=lambda x: x[1]["weight"], reverse=True)
-        else:
-            keyword_map = []
-        return keyword_map[:max_results]
+# For VSCode
+os.environ["IMPORT_YT_DONE"] = "1"
 
 class Youtube():
     scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
     api_service_name = "youtube"
     api_version = "v3"
     client_secrets_file = "secrets/ytsecret.json"
+    secrets_cache_file = "secrets/creds_oauth.pickle"
 
     # From google api explorer
     def __init__(self):
@@ -78,7 +33,7 @@ class Youtube():
 
     def get_credentials(self):
         """Either get Credentials object using pickle or do oauth manually and store credentials"""
-        creds = Path("tmpstor/creds_oauth.pickle")
+        creds = Path(self.secrets_cache_file)
         if creds.exists():
             with creds.open('rb') as f:
                 return pickle.load(f)
@@ -105,7 +60,7 @@ class Youtube():
         else:
             return None
 
-        if time.time() - float(cache_data[-1]["time"]) > 60*60*3:
+        if time.time() - float(cache_data[-1]["time"]) > 60*60*24:
             return None
         
         self._cache_etag(f, cache_data[0]["etag"], cache_data)
@@ -139,17 +94,17 @@ class Youtube():
         else:
             return data
 
-    def request(self, request: Callable, cache_type: str, cache_id: str) -> List[Dict]:
+    def request(self, request: Callable, cache_type: str, cache_id: str, cls: YoutubeData = YoutubeData) -> List[Dict]:
         data = self._fcache_req(cache_type, cache_id)
         if not data:
             api_data = self._paginate(request, request.execute())
             self._wcache_req(cache_type, cache_id, api_data)
-            return YoutubeData(api_data, cache_type)
+            return cls(self, api_data)
 
         print("Using already cached response")
-        return YoutubeData(data, cache_type)
+        return cls(self, data)
 
-    def get_channel(self, channel_id: str):
+    def get_channel(self, channel_id: str) -> YoutubeData:
         """https://developers.google.com/youtube/v3/docs/channels#resource"""
         request = self.yt.channels().list(
             part="snippet,contentDetails,statistics,localizations,contentOwnerDetails,statistics",
@@ -159,23 +114,22 @@ class Youtube():
 
         return self.request(request, "channel", channel_id)
 
-    def list_playlist(self, channel_id: str):
-        """https://developers.google.com/youtube/v3/docs/playlists/list"""
+    def get_all_playlists(self, channel_id: str) -> YoutubePlaylist:
+        """https://developers.google.com/youtube/v3/docs/playlists#resource"""
         request = self.yt.playlists().list(
             part="snippet,contentDetails,localizations,id,player",
             maxResults=50,
             channelId=channel_id
         )
 
-        return self.request(request, "channelplaylists", channel_id)
-
-    def get_channel_id_list():
-        return common.load_yaml("data/core/yt_channels.yaml")
+        return self.request(request, "channelplaylists", channel_id, YoutubePlaylist)
     
-    def item_loop(self, data: List[dict]):
-        for page in data:
-            if "internal" in page:
-                page["items"] = []
+    def get_playlist_item(self, playlist_id: str) -> YoutubePlaylistItem:
+        """https://developers.google.com/youtube/v3/docs/playlistItems#resource"""
+        request = self.yt.playlistItems().list(
+            part="snippet,contentDetails",
+            maxResults=50,
+            playlistId=playlist_id
+        )
 
-            for item in page["items"]:
-                yield item
+        return self.request(request, "playlistitem", playlist_id, YoutubePlaylistItem)

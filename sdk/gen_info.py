@@ -4,7 +4,7 @@ import shutil
 from sdk import common, video_crawler
 import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from typing import Dict, List
+from typing import Dict, List, Set
 
 
 def gen_info(selenium_scrape: bool = False):
@@ -45,134 +45,133 @@ def gen_info(selenium_scrape: bool = False):
         common.write_min_json(langs, langs_fp)
 
     # Create grades
-    grades: list = []
+    grades: set = set()
     tags: list = []
-    grade_boards: Dict[int, List[str]] = {}
+    grade_boards: Dict[int, Set[str]] = {}
+    subject_list: Dict[int, Set[str]] = {}
 
-    walker = os.walk("grades")
-
-    for dirpath, boards, _ in walker:
-        # We want the subject jsons not the grades
-        if dirpath == "grades":
+    for path in pathlib.Path("grades").rglob("*/*/*"):
+        if path.is_file():
             continue
-        
-        dir_split = dirpath.split("/")
-        
-        # Check if we are iterating over a grade. If dir_split is equal to 2: the folder is of the form grades/{GRADE}
-        grade = dir_split[1]
-        if grade.isdigit() and len(dir_split) == 2:
+
+        if len(path.parts) != 4:
+            continue
+
+        print(path)
+
+        _, grade, board, subject = path.parts
+
+        try:
             grade = int(grade)
+        except ValueError:
+            print(f"WARNING: Grade {grade} is invalid!")
+        
+        board = board.lower()
+        subject = subject.lower()
 
-            grades.append(grade)
-            grade_boards[grade] = []
-
-            print(f"Analysing grade {grade} with boards {boards}")
-
-            for board in boards:
-                # Check if we are iterating over a supported board where boards is all supported boards as per boards.yaml
-                if board.lower() not in boards_data:
-                    print(f"WARNING: {board.upper()} not in core/boards.yaml ({boards})")
-                    continue
-
-                board = board.lower()
-                grade_boards[grade].append(board.lower())
+        if board not in boards_data:
+            print(f"WARNING: {board.upper()} not in core/boards.yaml ({boards_data})")
+            continue
             
-                print(f"Found board {board.upper()}")
+        if subject not in subjects_data.keys():
+            print(f"WARNING: {subject.lower()} not in core/subjects.yaml")
+            continue
 
-                subject_list = []
-                    
-                board = board.lower()
-                _, subjects, _ = next(walker)
-                for subject in subjects:
-                    if subject.lower() not in subjects_data.keys():
-                        print(f"WARNING: {subject.lower()} not in core/subjects.yaml")
-                        continue
+        grades.add(grade)
+        if not grade_boards.get(grade):
+            grade_boards[grade] = set()
+        
+        grade_boards[grade].add(board.lower())
+            
+        print(f"Found board {board.upper()}")
 
-                    print(f"Found subject {subject} in board {board.upper()}")
+        if not subject_list.get(grade):
+            subject_list[grade] = set()
+        
+        subject_list[grade].add(subject)
 
-                    subject_list.append(subject.lower())
 
-                    subject_dir = os.path.join(dirpath, board, subject)
+        print(f"Found subject {subject} in board {board.upper()} of grade {grade}")
 
-                    chapter_listing: Dict[int, int] = {}
-                    for chapter in os.scandir(subject_dir):
-                        if not chapter.is_dir():
-                            continue
-                        print(f"Adding chapter {chapter.name}")
+        chapter_listing: Dict[int, int] = {}
 
-                        chapter_dir = os.path.join(subject_dir, chapter.name)
+        for chapter in path.iterdir():
+            if not chapter.is_dir():
+                continue
+            
+            print(f"Adding chapter {chapter.name}")
 
-                        # Chapter handling begins here
+            # Chapter handling begins here
 
-                        chapter_info = common.load_yaml(os.path.join(chapter_dir, "info.yaml"))
+            chapter_info = common.load_yaml(chapter / "info.yaml")
 
-                        try:
-                            chapter_listing[int(chapter.name)] = chapter_info["name"]
-                        except ValueError:
-                            print(f"WARNING: Invalid chapter {chapter.name}")
-                            continue
+            try:
+                chapter_listing[int(chapter.name)] = chapter_info["name"]
+            except ValueError:
+                print(f"WARNING: Invalid chapter {chapter.name}")
+                continue
 
-                        # Check chapter info and make fixes
-                        if not chapter_info.get("primary-tag"):
-                            if chapter_info.get("tags"):
-                                chapter_info["primary-tag"] = chapter_info["tags"][0]
-                            else:
-                                chapter_info["tags"] = []
-                                chapter_info["primary-tag"] = "untagged"
+            # Check chapter info and make fixes
+            if not chapter_info.get("primary-tag"):
+                if chapter_info.get("tags"):
+                    chapter_info["primary-tag"] = chapter_info["tags"][0]
+                else:
+                    chapter_info["tags"] = []
+                    chapter_info["primary-tag"] = "untagged"
 
-                        tags += chapter_info["tags"]
+            tags += chapter_info["tags"]
 
-                        chapter_res = common.load_yaml(os.path.join(chapter_dir, "extres.yaml"))
+            chapter_res = common.load_yaml(chapter / "extres.yaml")
 
-                        build_chapter_dir = chapter_dir.replace("grades", "build/grades", 1)
-                        pathlib.Path(build_chapter_dir).mkdir(parents=True)
+            build_chapter_dir = pathlib.Path(str(chapter).replace("grades", "build/grades", 1))
+            build_chapter_dir.mkdir(parents=True)
 
-                        # Check chapter res and make fixes
-                        subtopics: Dict[str, str] = {}
-                        for subtopic in chapter_res.keys():
-                            for key in chapter_res[subtopic].keys():
-                                if not chapter_res[subtopic].get(key):
-                                    chapter_res[subtopic][key] = []
+            # Check chapter res and make fixes
+            subtopics: Dict[str, str] = {}
+            for subtopic in chapter_res.keys():
+                for key in chapter_res[subtopic].keys():
+                    if not chapter_res[subtopic].get(key):
+                        chapter_res[subtopic][key] = []
                                 
-                                value = chapter_res[subtopic][key]
+                    value = chapter_res[subtopic][key]
 
-                                if value == "$name":
-                                    chapter_res[subtopic][key] = chapter_info["name"]
+                    if value == "$name":
+                        chapter_res[subtopic][key] = chapter_info["name"]
                             
-                                if isinstance(value, list):
-                                    for i, video in enumerate(value):
-                                        if not isinstance(video, dict):
-                                            continue
+                    if isinstance(value, list):
+                        for i, video in enumerate(value):
+                            if not isinstance(video, dict):
+                                continue
 
-                                        if video.get("js-needed") and selenium_scrape:
-                                            vdata = video_crawler.get_video_with_js(session, video["link"])
-                                        else:
-                                            vdata = video_crawler.get_video_bs4(video["link"])
-                                        value[i] = vdata
+                            if video.get("js-needed") and selenium_scrape:
+                                vdata = video_crawler.get_video_with_js(session, video["link"])
+                            else:
+                                vdata = video_crawler.get_video_bs4(video["link"])
+                            value[i] = vdata
                             
-                            subtopic_name = chapter_res[subtopic]["name"]
-                            subtopics[subtopic_name] = subtopic
+                subtopic_name = chapter_res[subtopic]["name"]
+                subtopics[subtopic_name] = subtopic
 
-                            # Make the subtopic file
-                            with open(os.path.join(build_chapter_dir, f"res-{subtopic}.min.json"), "w") as fp:
-                                common.write_min_json(chapter_res[subtopic], fp)
+                # Make the subtopic file
+                with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
+                    common.write_min_json(chapter_res[subtopic], fp)
                             
-                        chapter_info["subtopics"] = subtopics
+            chapter_info["subtopics"] = subtopics
 
-                        # Write info
-                        with open(os.path.join(build_chapter_dir, "info.min.json"), "w") as chapter_info_json:
-                            common.write_min_json(chapter_info, chapter_info_json)
+            # Write info
+            with (build_chapter_dir / "info.min.json").open("w") as chapter_info_json:
+                common.write_min_json(chapter_info, chapter_info_json)
+        
+        with open(os.path.join("build", "grades", str(grade), board, subject, "chapter_list.json"), "w") as chapter_listing_fp:
+            common.write_min_json(chapter_listing, chapter_listing_fp)
 
-                    chapter_listing_path = os.path.join(subject_dir.replace("grades", "build/grades", 1), "chapter_list.json")
-                    with open(chapter_listing_path, "w") as chapter_listing_fp:
-                        common.write_min_json(chapter_listing, chapter_listing_fp)
+        with open(os.path.join("build", "grades", str(grade), board, "subject_list.min.json"), "w") as subject_list_fp:  
+            common.write_min_json(list(subject_list[grade]), subject_list_fp)
 
-                with open(os.path.join("build", dirpath, board, "subject_list.min.json"), "w") as subject_list_fp:  
-                    common.write_min_json(subject_list, subject_list_fp)
+    grades: list = list(grades)
+    grades.sort()
 
-
-        if common.debug_mode:
-            print(dirpath, boards)
+    grade_boards = {k: list(v) for k, v in grade_boards.items()}
 
     # Add in grade info from recorded data
     with open("build/keystone/grade_info.min.json", "w") as grades_file:
