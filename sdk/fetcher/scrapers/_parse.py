@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import Tuple, Optional
 
-def get_subject(chapter_info: dict) -> List[str, Optional[str]]:
+def get_subject(chapter_info: dict) -> Tuple[str, Optional[str]]:
     subject = chapter_info["subject"]
     grade = chapter_info["grade"]
 

@@ -10,6 +10,7 @@ import shutil
 from typing import Any, Dict
 import click
 from sdk import create_new, gen_info, common
+from sdk.fetcher.yt import Youtube
 
 @click.group()
 def app():
@@ -82,8 +83,8 @@ def data_new():
 @click.option('--prod', default=False, help='Prod or no prod')
 def data_build(prod):
     """This compile all the chapter yaml files in data into *.min.json's for the site"""
+    args = {"yt": Youtube()}
     os.chdir("data")
-    args = {}
     if prod:
         args["selenium_scrape"] = True
     gen_info.gen_info(**args)

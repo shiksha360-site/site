@@ -2,12 +2,15 @@ import json
 import os
 import shutil
 from sdk import common, video_crawler
+from sdk.fetcher import scrape
 import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List, Set
 
+from sdk.fetcher.yt import Youtube
 
-def gen_info(selenium_scrape: bool = False):
+
+def gen_info(yt: Youtube, selenium_scrape: bool = False):
     if selenium_scrape:
         session = video_crawler.prepare()
     else:
@@ -127,8 +130,12 @@ def gen_info(selenium_scrape: bool = False):
             build_chapter_dir.mkdir(parents=True)
 
             # Check chapter res and make fixes
-            subtopics: Dict[str, str] = {}
+            subtopics: Dict[str, str] = {} # Dict that will store subtopics
             for subtopic in chapter_res.keys():
+                os.chdir("..")
+                yt_videos = scrape(yt, chapter_info, subtopic)
+                os.chdir("data")
+                # Ensure all None keys are made empty lists
                 for key in chapter_res[subtopic].keys():
                     if not chapter_res[subtopic].get(key):
                         chapter_res[subtopic][key] = []
@@ -139,6 +146,7 @@ def gen_info(selenium_scrape: bool = False):
                         chapter_res[subtopic][key] = chapter_info["name"]
                             
                     if isinstance(value, list):
+                        # Go through list of all videos and scrape the site for title
                         for i, video in enumerate(value):
                             if not isinstance(video, dict):
                                 continue
@@ -155,7 +163,9 @@ def gen_info(selenium_scrape: bool = False):
                 # Make the subtopic file
                 with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
                     common.write_min_json(chapter_res[subtopic], fp)
-                            
+
+            # Done with subtopic code
+
             chapter_info["subtopics"] = subtopics
 
             # Write info
