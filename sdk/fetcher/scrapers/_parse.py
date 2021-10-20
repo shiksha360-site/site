@@ -16,9 +16,7 @@ def print_kwmap(kwmap: List[str]):
     print([(title, k["weight"]) for title, k in [a for a in kwmap]])
 
 def create_kwlist(chapter_info: dict, subtopic: str):
-    keywords = {tag: 2 for tag in chapter_info["tags"]["accept"] if chapter_info["tags"]["accept"]}
-    reject =  [tag for tag in chapter_info["tags"]["reject"]]
-    if chapter_info["subtopic-tags"].get(subtopic):
-        keywords.update({tag: 3 for tag in chapter_info["subtopic-tags"][subtopic]["accept"]})
-        reject += [tag for tag in chapter_info["subtopic-tags"][subtopic]["reject"]]
+    weight = 2 if subtopic == "key" else 3
+    keywords = {tag: weight for tag in chapter_info["topics"][subtopic]["accept"]}
+    reject =  [tag for tag in chapter_info["topics"][subtopic]["reject"]]
     return keywords, reject

@@ -50,7 +50,6 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
 
     # Create grades
     grades: set = set()
-    tags: list = []
     grade_boards: Dict[int, Set[str]] = {}
     subject_list: Dict[int, Set[str]] = {}
 
@@ -119,75 +118,15 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
                 print(f"WARNING: Invalid chapter {chapter.name}")
                 continue
 
-            # Check chapter info and make fixes
-            if not chapter_info.get("primary-tag"):
-                if chapter_info.get("tags"):
-                    chapter_info["primary-tag"] = chapter_info["tags"]["accept"][0]
-                else:
-                    chapter_info["tags"] = [{"accept": [], "reject": []}]
-                    chapter_info["primary-tag"] = "untagged"
-
-            if chapter_info["tags"].get("reject") is None:
-                chapter_info["tags"]["reject"] = []
-            
-            # Fix subtopic tags
-            for subtopic, v in chapter_info.get("subtopic-tags", {}).items():
-                if not v:
-                    print(f"WARNING: No subtopic keys")
-                    chapter_info["subtopic-tags"][subtopic] = {"accept": [], "reject": []}
-                    continue
-                for k in v.keys():
-                    if not chapter_info["subtopic-tags"][subtopic][k]:
-                        print(f"INFO: Fixing subtopic key {k}")
-                        chapter_info["subtopic-tags"][subtopic][k] = []
-            
-            tags += chapter_info["tags"]
-
             chapter_res = common.load_yaml(chapter / "extres.yaml")
 
             build_chapter_dir = pathlib.Path(str(chapter).replace("grades", "build/grades", 1))
             build_chapter_dir.mkdir(parents=True)
 
-            # Check chapter res and make fixes
-            subtopics: Dict[str, str] = {} # Dict that will store subtopics
-            for subtopic in chapter_res.keys():
-                os.chdir("..")
-                yt_videos = scrape(yt, chapter_info, subtopic)
-                os.chdir("data")
-                # Ensure all None keys are made empty lists
-                for key in chapter_res[subtopic].keys():
-                    if not chapter_res[subtopic].get(key):
-                        chapter_res[subtopic][key] = []
-                                
-                    value = chapter_res[subtopic][key]
-
-                    if isinstance(value, str):
-                        value = value.replace("$name", chapter_info["name"])
-                        chapter_res[subtopic][key] = value
-                            
-                    if isinstance(value, list):
-                        # Go through list of all videos and scrape the site for title
-                        for i, video in enumerate(value):
-                            if not isinstance(video, dict):
-                                continue
-
-                            if video.get("js-needed") and selenium_scrape:
-                                vdata = video_crawler.get_video_with_js(session, video["link"])
-                            else:
-                                vdata = video_crawler.get_video_bs4(video["link"])
-                            value[i] = vdata
-                            
-                subtopic_name = chapter_res[subtopic]["name"]
-                subtopics[subtopic_name] = subtopic
-
-                # Make the subtopic file
-                with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
-                    common.write_min_json(chapter_res[subtopic], fp)
-
-            # Done with subtopic code
-
-            chapter_info["subtopics"] = subtopics
-
+            # Parse all the topics
+            for topic in chapter_info["topics"]:
+                chapter_info["topics"], chapter_res = parse_topic(yt, chapter_info, chapter_res, build_chapter_dir, session, topic)
+                                                
             # Write info
             with (build_chapter_dir / "info.min.json").open("w") as chapter_info_json:
                 common.write_min_json(chapter_info, chapter_info_json)
@@ -209,10 +148,9 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
     with open("build/keystone/grade_info.min.json", "w") as grades_file:
         common.write_min_json({
                 "grades": grades,
-                "tags": tags,
                 "grade_boards": grade_boards
-            },
-            grades_file)
+        },
+        grades_file)
 
     # Create keystone.min.json using jinja2 and others
     print("Compiling HTML")
@@ -224,3 +162,49 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
                 "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="hi"))
             }
         }, keystone)
+
+
+def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, session, topic):
+    # Fix and add proper reject stuff
+    if chapter_info["topics"][topic].get("reject") is None:
+        chapter_info["topics"][topic]["reject"] = []
+
+    if chapter_info["topics"][topic].get("accept") is None:
+        chapter_info["topics"][topic]["accept"] = []
+
+    if chapter_info["topics"][topic].get("subtopics") is None:
+        chapter_info["topics"][topic]["subtopics"] = {}
+
+    if chapter_info["topics"][topic].get("name", "$name") == "$name":
+        chapter_info["topics"][topic]["name"] = chapter_info["name"]
+
+    os.chdir("..")
+    scrape(yt, chapter_info, topic)
+    os.chdir("data")
+
+    # Check chapter res and make fixes
+    for subtopic in chapter_res.keys():
+        # Ensure all None keys are made empty lists
+        for key in chapter_res[subtopic].keys():
+            if not chapter_res[subtopic].get(key):
+                chapter_res[subtopic][key] = []
+                        
+            value = chapter_res[subtopic][key]
+                    
+            if isinstance(value, list):
+                # Go through list of all videos and scrape the site for title
+                for i, video in enumerate(value):
+                    if not isinstance(video, dict):
+                        continue
+
+                    if video.get("js-needed"):
+                        vdata = video_crawler.get_video_with_js(session, video["link"])
+                    else:
+                        vdata = video_crawler.get_video_bs4(video["link"])
+                    value[i] = vdata
+                    
+        # Make the subtopic file
+        with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
+            common.write_min_json(chapter_res[subtopic], fp)
+    
+    return chapter_info["topics"], chapter_res

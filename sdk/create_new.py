@@ -3,6 +3,8 @@ import shutil
 from pathlib import Path
 import sys
 from sdk import common
+import uuid
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 def create_new():
     boards = common.load_yaml("core/boards.yaml")
@@ -15,13 +17,7 @@ def create_new():
         print("Invalid grade")
         sys.exit(-1)
 
-    grade_path = f"grades/{grade}"
-
-    if not os.path.exists("grades"):
-        os.mkdir("grades")
-
-    if not os.path.exists(grade_path):
-        os.mkdir(grade_path)
+    grade_path = Path(f"grades/{grade}")
 
     board = input("Enter board? ")
 
@@ -29,23 +25,19 @@ def create_new():
         print("Board not in core/boards.yaml!")
         sys.exit(-1)
 
-    board_path = f"{grade_path}/{board.lower()}"
-
-    if not os.path.exists(board_path):
-        os.mkdir(board_path)
-
     subject = input("Enter subject name? ")
 
     if subject.lower() not in subjects.keys():
         print("Subject not in core/subjects.yaml!")
         sys.exit(-1)  
 
-    subject_path = f"{board_path}/{subject.lower()}"
+    # Actual creation
+    subject_path = grade_path / board.lower() / subject.lower()
 
-    if not os.path.exists(subject_path):
-        os.mkdir(subject_path)
-
-    chapters = [int(chapter) for chapter in os.listdir(subject_path)]
+    try:
+        chapters = [int(chapter.name) for chapter in subject_path.iterdir()]
+    except (FileNotFoundError, ValueError):
+        chapters = []
 
     if chapters:
         chapters.sort()
@@ -53,13 +45,26 @@ def create_new():
     else:
         next_chapter = 1
 
-    chapter_path = f"{subject_path}/{next_chapter}"
+    chapter_path = subject_path / str(next_chapter)
 
-    os.mkdir(chapter_path)
+    name = input("Enter the chapter name: ")
 
-    shutil.copyfile("templates/chapter_info.yaml", f"{chapter_path}/info.yaml")
-    shutil.copyfile("templates/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
+    chapter_path.mkdir(exist_ok=True, parents=True)
 
-    # Not actually used
-    with Path(f"{chapter_path}/info.yaml").open("a") as info:
-        info.write(f"\nsubject: {subject.lower()}\ngrade: {grade}\nboard: {board.lower()}")
+    # Basic setup of jinja2
+    env = Environment(
+        loader=FileSystemLoader("templates/yaml"),
+        autoescape=select_autoescape()
+    )
+
+    info = env.get_template("chapter_info.yaml")
+
+    data = info.render(
+        id=str(uuid.uuid4()),
+        name=name
+    )
+
+    with (chapter_path / "info.yaml").open("w") as info:
+        info.write(data)
+
+    shutil.copyfile("templates/yaml/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
