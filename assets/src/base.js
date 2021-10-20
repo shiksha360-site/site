@@ -53,7 +53,7 @@ function getBoard(grade, board) {
                 console.log("Still waiting for subject cache")
                 return
             }
-            html += `<li><a href='#' onclick='loadSubject(${grade},"${board}","${subject}")'>${subject_dat.name}</a><br/>${subject_dat.desc}<br/></li>`
+            html += `<li><a href='#' onclick='loadSubject(${grade},"${board}","${subject}")'>${subject_dat.name}</a><br/><span class='subject-desc'>${subject_dat.desc}</span></li>`
         })    
         a = $("<ul>", {
             "class": "subject",

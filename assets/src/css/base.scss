@@ -4,18 +4,24 @@ $title-padding: 3px;
     padding: $title-padding;
 }
 
-.boards {
+.boards, .subject, li {
     display: list-item;
-    list-style: none;
-    list-style-type: none;
+    list-style: none !important;
+    list-style-type: none !important;
     padding: $title-padding;
 }
 
-ul, li {
-    list-style-type: none;
-    list-style: none;
+#toc {
+    width: 40%;
+    margin: 0 auto;
+    text-align: center;
+    display: block;
+    border: solid;
+    background-color: #D3D3D3;
 }
 
-#toc {
-    text-align: center;
+.subject-desc {
+    display: block;
+    width: 100%;
+    text-align: left !important;
 }
