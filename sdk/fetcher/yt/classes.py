@@ -3,11 +3,8 @@ from typing import Dict, List
 import os
 
 # For VSCode
-if os.environ.get("IMPORT_SC_DONE"):
+if True is False:
     from sdk.fetcher import ScrapeCache
-
-# For VSCode
-if os.environ.get("IMPORT_YT_DONE"):
     from sdk.fetcher.yt import Youtube
 
 class YoutubeData():

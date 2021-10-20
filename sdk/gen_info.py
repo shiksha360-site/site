@@ -108,6 +108,11 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
             # Chapter handling begins here
             chapter_info = common.load_yaml(chapter / "info.yaml")
 
+            chapter_info["subject"] = subject
+            chapter_info["grade"] = grade
+            chapter_info["board"] = board
+
+
             try:
                 chapter_listing[int(chapter.name)] = chapter_info["name"]
             except ValueError:
@@ -189,7 +194,7 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
             
             scrape_cache_clear()
         
-        with open(os.path.join("build", "grades", str(grade), board, subject, "chapter_list.json"), "w") as chapter_listing_fp:
+        with open(os.path.join("build", "grades", str(grade), board, subject, "chapter_list.min.json"), "w") as chapter_listing_fp:
             common.write_min_json(chapter_listing, chapter_listing_fp)
 
         with open(os.path.join("build", "grades", str(grade), board, "subject_list.min.json"), "w") as subject_list_fp:  

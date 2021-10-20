@@ -1,34 +1,11 @@
-import os
 from sdk.fetcher.yt import Youtube
+from .classes import ScrapeData, ScrapeCache
 from sdk import common
 from .scrapers import ln_scrape
 
 scrapers = {
     "lnscrape": ln_scrape.ln_scrape
 }
-
-class ScrapeCache():
-    def __init__(self):
-        self.cache = {}
-        self.current = None
-    
-    def keys(self):
-        return self.cache.keys()
-    
-    def set_current(self, current: str):
-        if current not in self.keys():
-            self.cache[current] = []
-        self.current = current
-    
-    def get_cached(self) -> list:
-        return self.cache[self.current]
-    
-    def add(self, title: str):
-        self.cache[self.current].append(title)
-    
-    def clear(self):
-        self.cache = {}
-        self.current = None
 
 scrape_cache = ScrapeCache()
 
@@ -40,7 +17,8 @@ def scrape(yt: Youtube, chapter_info: dict, subtopic: str):
     scraped_data = {}
     for name, channel_info in channel_list.items():
         scrape_cache.set_current(channel_info["scraper"])
-        scraped_data[name] = scrapers[channel_info["scraper"]](yt, channel_info, chapter_info, subtopic, scrape_cache)
+        data = ScrapeData(yt=yt, channel_info=channel_info, chapter_info=chapter_info, subtopic=subtopic, scrape_cache=scrape_cache)
+        scraped_data[name] = scrapers[channel_info["scraper"]](data)
     return scraped_data
 
 def scrape_cache_clear():

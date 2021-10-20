@@ -68,7 +68,8 @@ function getBoard(grade, board) {
 }
 
 function loadSubject(grade, board, subject) {
-
+    fetch(`/data/grades/${grade}/${board}/${subject}/chapter_list.min.json`)
+    .then()
 }
 
 $(document).ready(() => {

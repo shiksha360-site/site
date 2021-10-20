@@ -60,5 +60,6 @@ def create_new():
     shutil.copyfile("templates/chapter_info.yaml", f"{chapter_path}/info.yaml")
     shutil.copyfile("templates/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
 
+    # Not actually used
     with Path(f"{chapter_path}/info.yaml").open("a") as info:
         info.write(f"\nsubject: {subject.lower()}\ngrade: {grade}\nboard: {board.lower()}")
