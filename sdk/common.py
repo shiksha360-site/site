@@ -1,4 +1,5 @@
-from yaml import load, CLoader as Loader, CDumper as Dumper
+from ruamel.yaml import YAML
+from yaml import load, Loader
 import json
 import sys
 import os
@@ -6,9 +7,15 @@ import random
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
-def load_yaml(filename: str) -> dict:
+def load_yaml(filename: str, version: float = 1.1, use_pyyaml: bool = False) -> dict:
     with open(str(filename)) as file:
-        data = load(file, Loader=Loader)
+        # Set YAML Version
+        contents = f"%YAML {version}\n---\n" + file.read()
+        if not use_pyyaml:
+            yaml = YAML(typ="safe")
+            data = yaml.load(contents)
+        else:
+            data = load(contents, Loader=Loader)
         if debug_mode:
             print(f"Opened YAML ({filename}): ", pformat(data))
         return data
