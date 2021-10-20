@@ -6,6 +6,7 @@ from sdk.fetcher import scrape
 import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List, Set
+from copy import deepcopy
 
 from sdk.fetcher.yt import Youtube
 
@@ -105,7 +106,6 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
             print(f"Adding chapter {chapter.name}")
 
             # Chapter handling begins here
-
             chapter_info = common.load_yaml(chapter / "info.yaml")
 
             try:
@@ -117,11 +117,25 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
             # Check chapter info and make fixes
             if not chapter_info.get("primary-tag"):
                 if chapter_info.get("tags"):
-                    chapter_info["primary-tag"] = chapter_info["tags"][0]
+                    chapter_info["primary-tag"] = chapter_info["tags"]["accept"][0]
                 else:
-                    chapter_info["tags"] = []
+                    chapter_info["tags"] = [{"accept": [], "reject": []}]
                     chapter_info["primary-tag"] = "untagged"
 
+            if chapter_info["tags"].get("reject") is None:
+                chapter_info["tags"]["reject"] = []
+            
+            # Fix subtopic tags
+            for subtopic, v in chapter_info.get("subtopic-tags", {}).items():
+                if not v:
+                    print(f"WARNING: No subtopic keys")
+                    chapter_info["subtopic-tags"][subtopic] = {"accept": [], "reject": []}
+                    continue
+                for k in v.keys():
+                    if not chapter_info["subtopic-tags"][subtopic][k]:
+                        print(f"INFO: Fixing subtopic key {k}")
+                        chapter_info["subtopic-tags"][subtopic][k] = []
+            
             tags += chapter_info["tags"]
 
             chapter_res = common.load_yaml(chapter / "extres.yaml")

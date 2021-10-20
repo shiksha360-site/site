@@ -8,7 +8,7 @@ import time
 import orjson
 import pickle
 import os
-from .classes import YoutubeData, YoutubePlaylist, YoutubePlaylistItem
+from .classes import YoutubeData, YoutubePlaylist, YoutubePlaylistItem, YoutubeVideo
 
 # For VSCode
 os.environ["IMPORT_YT_DONE"] = "1"
@@ -133,3 +133,13 @@ class Youtube():
         )
 
         return self.request(request, "playlistitem", playlist_id, YoutubePlaylistItem)
+    
+    def get_video(self, video_id: str) -> YoutubeVideo:
+        """https://developers.google.com/youtube/v3/docs/videos#resource"""
+        request = self.yt.videos().list(
+            part="snippet,contentDetails,statistics,player",
+            maxResults=50,
+            id=video_id
+        )
+
+        return self.request(request, "video", video_id, YoutubeVideo)

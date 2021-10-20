@@ -1,7 +1,7 @@
 from sdk.fetcher.yt import Youtube
-from ._parse import get_subject
+from ._parse import get_subject, print_kwmap, create_kwlist
 
-def ln_scrape(yt: Youtube, channel_info: dict, chapter_info: dict, subtopic: str):
+def ln_scrape(yt: Youtube, channel_info: dict, chapter_info: dict, subtopic: str, global_cache: object):
     """LearnNext Scraper"""
     channel_id = channel_info["channel-id"]
     subject, alt_subject, gr6b = get_subject(chapter_info)
@@ -23,4 +23,22 @@ def ln_scrape(yt: Youtube, channel_info: dict, chapter_info: dict, subtopic: str
         silent=True
     )
 
-    print([(title, k["weight"]) for title, k in [a for a in kwmap]])
+    print_kwmap(kwmap)
+
+    keywords, reject = create_kwlist(chapter_info, subtopic)
+
+
+    for playlist_item in playlists.get_items(title_list=titles):
+        kwmap, titles = playlist_item.get_title_with_kw(
+            keywords=keywords,
+            reject_keywords=reject,
+            cache=global_cache,
+            silent=True
+        )
+
+        print_kwmap(kwmap)
+
+        for video in playlist_item.get_videos(title_list=titles):
+            for video_item in video.loop():
+                view_count = int(video_item["statistics"]["viewCount"])
+                print(video.item_min(video_item))

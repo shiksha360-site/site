@@ -3,6 +3,10 @@ from typing import Dict, List
 import os
 
 # For VSCode
+if os.environ.get("IMPORT_SC_DONE"):
+    from sdk.fetcher import ScrapeCache
+
+# For VSCode
 if os.environ.get("IMPORT_YT_DONE"):
     from sdk.fetcher.yt import Youtube
 
@@ -27,12 +31,24 @@ class YoutubeData():
         """Minifies a item"""
         return item
 
-    def get_title_with_kw(self, keywords: Dict[str, int], max_results: int = 5, silent: bool = False):
+    def get_title_with_kw(
+        self, 
+        keywords: Dict[str, int], 
+        reject_keywords: Dict[str, int] = None, 
+        max_results: int = 5, 
+        silent: bool = False, 
+        cache: "ScrapeCache" = None
+    ):
         """Helper method to get all titles matching a set of keywords where keywords is a map of the keyword to its weightage"""
         keyword_map = {} # Store how many keyword maps
-        titles = []
         for item in self.loop():
             title = self.get_item_title(item)
+
+            if cache:
+                if title in cache.get_cached():
+                    if not silent:
+                        print("Ignoring cached title: ", cache.get_cached())
+                    continue
 
             item_min = self.item_min(item)
             item_min["weight"] = 0
@@ -47,10 +63,14 @@ class YoutubeData():
                     # Anywhere in title means 0.5 weightage
                     keyword_map[title]["weight"] += 0.5*weight
                 
+            if reject_keywords:
+                for kw in reject_keywords:
+                    if kw in title.lower():
+                        keyword_map[title]["weight"] = 0
+                        break
+
             if keyword_map[title]["weight"] == 0:
                 del keyword_map[title]
-            else:
-                titles.append(title)
 
             if not silent:
                 print(title)
@@ -59,8 +79,15 @@ class YoutubeData():
             keyword_map = sorted(keyword_map.items(), key=lambda x: x[1]["weight"], reverse=True)
         else:
             keyword_map = []
-        return keyword_map[:max_results], titles[:max_results]
+        
+        keyword_map = keyword_map[:max_results]
+        
+        titles = [title[0] for title in keyword_map]
+        if cache:
+            for title in titles:
+                cache.add(title)
 
+        return keyword_map, titles
 
 class YoutubePlaylist(YoutubeData):
     def item_min(self, item) -> dict:
@@ -81,4 +108,18 @@ class YoutubePlaylist(YoutubeData):
 
 
 class YoutubePlaylistItem(YoutubeData):
-    ...
+    def get_videos(self, title_list: List[str] = None):
+        for item in self.loop():
+            if title_list and self.get_item_title(item) not in title_list:
+                continue
+            if self.exit_loop != "get_vids":
+                yield self.yt.get_video(item["contentDetails"]["videoId"])
+
+class YoutubeVideo(YoutubeData):
+    def item_min(self, item) -> dict:
+        return {
+            "embed": item["player"]["embedHtml"],
+            "id": item["id"],
+            "description": item["snippet"]["description"],
+            "weight": 0
+        }

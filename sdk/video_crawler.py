@@ -39,7 +39,8 @@ def get_video_with_js(session, url: str) -> dict:
             common.write_min_json(data, cache_fp)
         return data
     else:
-        print(f"Using cached resource {cache}")
+        if os.environ.get("DEBUG"):
+            print(f"Using cached resource {cache}")
         with cache.open() as cache_fp:
             return orjson.loads(cache_fp.read())
 
@@ -55,6 +56,7 @@ def get_video_bs4(url: str) -> dict:
             common.write_min_json(data, cache_fp)
         return data
     else:
-        print(f"Using cached resource {cache}")
+        if os.environ.get("DEBUG"):
+            print(f"Using cached resource {cache}")
         with cache.open() as cache_fp:
             return orjson.loads(cache_fp.read())
