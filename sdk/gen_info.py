@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 from sdk import common, video_crawler
-from sdk.fetcher import scrape
+from sdk.fetcher import scrape, scrape_cache_clear
 import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List, Set
@@ -156,8 +156,9 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
                                 
                     value = chapter_res[subtopic][key]
 
-                    if value == "$name":
-                        chapter_res[subtopic][key] = chapter_info["name"]
+                    if isinstance(value, str):
+                        value = value.replace("$name", chapter_info["name"])
+                        chapter_res[subtopic][key] = value
                             
                     if isinstance(value, list):
                         # Go through list of all videos and scrape the site for title
@@ -185,6 +186,8 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
             # Write info
             with (build_chapter_dir / "info.min.json").open("w") as chapter_info_json:
                 common.write_min_json(chapter_info, chapter_info_json)
+            
+            scrape_cache_clear()
         
         with open(os.path.join("build", "grades", str(grade), board, subject, "chapter_list.json"), "w") as chapter_listing_fp:
             common.write_min_json(chapter_listing, chapter_listing_fp)

@@ -36,9 +36,10 @@ def ln_scrape(yt: Youtube, channel_info: dict, chapter_info: dict, subtopic: str
             silent=True
         )
 
+        print(f"Subtopic: {subtopic}")
         print_kwmap(kwmap)
 
         for video in playlist_item.get_videos(title_list=titles):
             for video_item in video.loop():
                 view_count = int(video_item["statistics"]["viewCount"])
-                print(video.item_min(video_item))
+                #print(video.item_min(video_item))

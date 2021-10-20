@@ -25,6 +25,10 @@ class ScrapeCache():
     
     def add(self, title: str):
         self.cache[self.current].append(title)
+    
+    def clear(self):
+        self.cache = {}
+        self.current = None
 
 scrape_cache = ScrapeCache()
 
@@ -38,3 +42,6 @@ def scrape(yt: Youtube, chapter_info: dict, subtopic: str):
         scrape_cache.set_current(channel_info["scraper"])
         scraped_data[name] = scrapers[channel_info["scraper"]](yt, channel_info, chapter_info, subtopic, scrape_cache)
     return scraped_data
+
+def scrape_cache_clear():
+    scrape_cache.clear()
