@@ -5,11 +5,14 @@ $title-padding: 3px;
 }
 
 .boards {
+    display: list-item;
     list-style: none;
+    list-style-type: none;
     padding: $title-padding;
 }
 
 ul, li {
+    list-style-type: none;
     list-style: none;
 }
 

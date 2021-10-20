@@ -67,6 +67,10 @@ function getBoard(grade, board) {
     })
 }
 
+function loadSubject(grade, board, subject) {
+
+}
+
 $(document).ready(() => {
     fetch(`/data/keystone/subjects.min.json`)
     .then(r => r.json())
