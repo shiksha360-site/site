@@ -149,9 +149,14 @@ def push_src(commitmsg: str = "Some fixes to improve stability"):
         os.system(f"git commit -m '{commitmsg}'")
         os.system("git push")
 
-    push()
-    os.chdir("data")
-    push()
+    out = StringIO()
+    err = StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        push()
+        os.chdir("data")
+        push()
+    
+    return HTMLResponse(f"{out.read()}\n\nErrors:{err.read()}")   
 
 
 app.include_router(router)
