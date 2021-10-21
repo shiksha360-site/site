@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError, ValidationError, HTTPExce
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from sdk.fetcher.yt.api import Youtube
-from .models import Chapter, Grade, Board, Subject
+from .models import Chapter, Grade, Board, Subject, GitOP
 import asyncpg
 from lynxfall.utils.fastapi import api_success, api_error
 from sdk.create_new import create_new
@@ -71,7 +71,7 @@ def new_chapter(
     """
     Creates a new chapter in the syllabus
     """
-    rc, ctx = create_new(grade=grade, board=board, subject=subject, name=name)
+    rc, ctx = create_new(grade=grade.value, board=board.value, subject=subject.value, name=name)
     if rc:
         return api_error(rc)
     return api_success(ctx=ctx)
@@ -145,8 +145,8 @@ def compile_static():
     
     return HTMLResponse(f"{out.read()}\n\nErrors:\n{err.read()}")
 
-@router.post("/push")
-def push_src(commitmsg: str = "Some fixes to improve stability"):
+@router.post("/git")
+def git(commitmsg: str = "Some fixes to improve stability", op: GitOP = GitOP.push):
     """Warning: May hang the server"""
 
     def push(out, err):
@@ -154,12 +154,21 @@ def push_src(commitmsg: str = "Some fixes to improve stability"):
         out, err = common.system(f"git commit -m '{commitmsg}'", out, err)
         out, err = common.system("git push", out, err)
         return out, err
+    
+    def pull(out, err):
+        out, err = common.system("git pull -v", out, err)
+        return out, err    
+
+    if op == GitOP.push:
+        f = push
+    else:
+        f = pull
 
     out, err = "", ""
 
-    out, err = push(out, err)
+    out, err = f(out, err)
     os.chdir("data")
-    out, err = push(out, err)
+    out, err = f(out, err)
     os.chdir("..")
     
     return HTMLResponse(f"{out}\n{err}")

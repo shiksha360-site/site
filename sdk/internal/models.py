@@ -23,6 +23,11 @@ class Subject(str, Enum):
     math = "math"
     english = "english"
 
+class GitOP(str, Enum):
+    push = "push"
+    pull = "pull"
+
+
 class APIResponse(BaseModel):
     done: bool = True
     reason: Optional[str] = None
