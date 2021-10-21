@@ -17,6 +17,7 @@ from pathlib import Path
 import os
 import contextlib
 from io import StringIO
+import subprocess
 
 app = FastAPI(docs_url="/internal")
 
@@ -144,22 +145,26 @@ def compile_static():
 def push_src(commitmsg: str = "Some fixes to improve stability"):
     """Warning: May hang the server"""
 
-    def push():
-        os.system("git add -v .")
-        os.system(f"git commit -m '{commitmsg}'")
-        os.system("git push")
+    def system(call, out, err):
+        with subprocess.Popen(call, stdout=subprocess.PIPE, shell=True, env=os.environ) as proc:
+            cmd_out, cmd_err = proc.communicate()
+            if not cmd_err:
+                cmd_err = b""
+            return out+cmd_out.decode("utf-8"), err+cmd_err.decode("utf-8")
 
-    out = StringIO()
-    err = StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        push()
-        os.chdir("data")
-        push()
+    def push(out, err):
+        out, err = system("git add -v .", out, err)
+        out, err = system(f"git commit -m '{commitmsg}'", out, err)
+        out, err = system("git push", out, err)
+        return out, err
+
+    out, err = "", ""
+
+    out, err = push(out, err)
+    os.chdir("data")
+    out, err = push(out, err)
     
-    out.seek(0)
-    err.seek(0)
-
-    return HTMLResponse(f"{out.read()}\n\nErrors:{err.read()}")   
+    return HTMLResponse(f"{out}\n\nErrors:{err}")   
 
 
 app.include_router(router)
