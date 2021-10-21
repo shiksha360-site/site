@@ -77,7 +77,7 @@ def staticfiles_compile():
 def data_new():
     """Creates a subject and/or a chapter in a subject"""
     rc = create_new.create_new()
-    if not rc:
+    if rc:
         print(rc)
 
 @data.command("build")
