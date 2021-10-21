@@ -1,25 +1,60 @@
-from ruamel.yaml import YAML
-from yaml import load, Loader
+from typing import List
+from ruamel.yaml import YAML, comments
 import json
 import sys
 import os
 import subprocess
 import random
+import threading
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
-def load_yaml(filename: str, version: float = 1.1, use_pyyaml: bool = False) -> dict:
-    with open(str(filename)) as file:
+class YamlLoadCache():
+    def __init__(self):
+        self.cache = {}
+
+    def clear(self):
+        self.cache = {}
+
+    def _cache_key(self, filename: str, ruamel_type: str = "safe"):
+        return f"{filename}-{ruamel_type}"
+
+    def get(self, filename: str, ruamel_type: str = "safe"):
+        return self.cache.get(self._cache_key(filename, ruamel_type))
+    
+    def set(self, filename: str, data: object, ruamel_type: str = "safe"):
+        self.cache[self._cache_key(filename, ruamel_type)] = data
+
+cache = YamlLoadCache()
+
+def pformat(d) -> str:
+    return json.dumps(d, indent=4)
+
+def load_yaml(filename: str, version: float = 1.1, ruamel_type: str = "safe") -> dict:
+    """NOTE: use_pyyaml has been removed"""
+    filename = str(filename)
+    cached = cache.get(filename, ruamel_type)
+    if cached:
+        return cached
+    with open(filename) as file:
         # Set YAML Version
         contents = f"%YAML {version}\n---\n" + file.read()
-        if not use_pyyaml:
-            yaml = YAML(typ="safe")
-            data = yaml.load(contents)
-        else:
-            data = load(contents, Loader=Loader)
+        yaml = YAML(typ=ruamel_type)
+        data = yaml.load(contents)
         if debug_mode:
             print(f"Opened YAML ({filename}): ", pformat(data))
+        cache.set(filename, data, ruamel_type)
         return data
+
+def dump_yaml(filename: str, data, ruamel_type: str = "safe"):
+    if isinstance(data, comments.CommentedMap):
+        ruamel_type = "rt"
+    
+    with open(str(filename), "w") as file:
+        yaml = YAML(typ=ruamel_type)
+        yaml.dump(data, file)
+    
+    threading.Thread(target=cache.clear).start()
 
 def input_int(prompt: str, *, tries: int = 0, return_none: bool = False) -> int:
     try:
@@ -33,10 +68,6 @@ def input_int(prompt: str, *, tries: int = 0, return_none: bool = False) -> int:
                 sys.exit(-1)
         print("Invalid input")
         return input_int(prompt, tries=tries+1)
-
-
-def pformat(d) -> str:
-    return json.dumps(d, indent=4)
 
 def write_min_json(d: dict, fp):
     return fp.write(json.dumps(d, separators=(',', ':')))

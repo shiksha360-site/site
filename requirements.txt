@@ -13,3 +13,4 @@ asyncpg
 loguru
 cython
 git+https://github.com/Fates-List/lynxfall
+fastapi-restful[all]
