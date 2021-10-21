@@ -1,15 +1,14 @@
 import json
 import os
 import shutil
-from sdk import common, video_crawler
-from sdk.fetcher import scrape, scrape_cache_clear
 import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List, Set
 from copy import deepcopy
+from sdk import common, video_crawler
+from sdk.fetcher import scrape, scrape_cache_clear
 
 from sdk.fetcher.yt import Youtube
-
 
 def gen_info(yt: Youtube, selenium_scrape: bool = False):
     if selenium_scrape:
@@ -111,7 +110,6 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
             chapter_info["grade"] = grade
             chapter_info["board"] = board
 
-
             try:
                 chapter_listing[int(chapter.name)] = chapter_info["name"]
             except ValueError:
@@ -164,7 +162,7 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
         }, keystone)
 
 
-def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, session, topic):
+def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, session, topic, pretend=False):
     # Fix and add proper reject stuff
     if chapter_info["topics"][topic].get("reject") is None:
         chapter_info["topics"][topic]["reject"] = []
@@ -178,9 +176,9 @@ def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, sessi
     if chapter_info["topics"][topic].get("name", "$name") == "$name":
         chapter_info["topics"][topic]["name"] = chapter_info["name"]
 
-    os.chdir("..")
-    scrape(yt, chapter_info, topic)
-    os.chdir("data")
+    if yt:
+        os.chdir("..")
+        scrape(yt, chapter_info, topic)
 
     # Check chapter res and make fixes
     for subtopic in chapter_res.keys():
@@ -197,14 +195,23 @@ def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, sessi
                     if not isinstance(video, dict):
                         continue
 
-                    if video.get("js-needed"):
+                    if video.get("js-needed") and session:
                         vdata = video_crawler.get_video_with_js(session, video["link"])
                     else:
                         vdata = video_crawler.get_video_bs4(video["link"])
                     value[i] = vdata
-                    
+
         # Make the subtopic file
-        with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
-            common.write_min_json(chapter_res[subtopic], fp)
-    
+        if not pretend:
+            os.chdir("data")
+            with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
+                common.write_min_json(chapter_res[subtopic], fp)
+            os.chdir("..")
+
+    if not pretend:
+        try:
+            os.chdir("data")
+        except:
+            pass
+
     return chapter_info["topics"], chapter_res

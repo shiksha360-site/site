@@ -29,7 +29,7 @@ def page_kill(session):
 
 
 def get_video_with_js(session, url: str) -> dict:
-    cache = Path("../tmpstor") / f"url-{url}-js".replace("/", "@").replace(".", "*")
+    cache = Path("tmpstor") / f"url-{url}-js".replace("/", "@").replace(".", "*")
     cache = cache.with_suffix(".min.json")
     if not cache.exists():
         print(f"Selenium scrape triggered on {url}")
@@ -45,7 +45,7 @@ def get_video_with_js(session, url: str) -> dict:
             return orjson.loads(cache_fp.read())
 
 def get_video_bs4(url: str) -> dict:
-    cache = Path("../tmpstor") / f"url-{url}-bs4".replace("/", "@").replace(".", "*")
+    cache = Path("tmpstor") / f"url-{url}-bs4".replace("/", "@").replace(".", "*")
     cache = cache.with_suffix(".min.json")
     if not cache.exists():
         print(f"BS4 scrape triggered on {url}")

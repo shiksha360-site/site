@@ -5,3 +5,11 @@ pyyaml
 google-api-python-client
 google-auth-oauthlib 
 google-auth-httplib2
+fastapi
+jinja2
+beautifulsoup4
+orjson
+asyncpg
+loguru
+cython
+git+https://github.com/Fates-List/lynxfall

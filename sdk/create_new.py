@@ -6,30 +6,21 @@ from sdk import common
 import uuid
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-def create_new(grade: int = None, board: str = None, subject: str = None):
+def create_new(grade: int, board: str, subject: str, name: str):
     boards = common.load_yaml("data/core/boards.yaml")
     subjects = common.load_yaml("data/core/subjects.yaml")
 
     # Create the grade
-    if not grade:
-        grade = common.input_int("Enter grade? ")
-
     if grade > 12 or grade <= 0:
-        return "Invalid grade"
+        return "Invalid grade", None
 
     grade_path = Path(f"data/grades/{grade}")
 
-    if not board:
-        board = input("Enter board? ")
-
     if board.upper() not in boards:
-        return "Board not in core/boards.yaml!"
-
-    if not subject:
-        subject = input("Enter subject name? ")
+        return "Board not in core/boards.yaml!", None
 
     if subject.lower() not in subjects.keys():
-        return "Subject not in core/subjects.yaml!"
+        return "Subject not in core/subjects.yaml!", None
 
     # Actual creation
     subject_path = grade_path / board.lower() / subject.lower()
@@ -47,8 +38,6 @@ def create_new(grade: int = None, board: str = None, subject: str = None):
 
     chapter_path = subject_path / str(next_chapter)
 
-    name = input("Enter the chapter name: ")
-
     chapter_path.mkdir(exist_ok=True, parents=True)
 
     # Basic setup of jinja2
@@ -59,8 +48,10 @@ def create_new(grade: int = None, board: str = None, subject: str = None):
 
     info = env.get_template("chapter_info.yaml")
 
+    id = str(uuid.uuid4())
+
     data = info.render(
-        id=str(uuid.uuid4()),
+        id=id,
         name=name
     )
 
@@ -68,3 +59,5 @@ def create_new(grade: int = None, board: str = None, subject: str = None):
         info.write(data)
 
     shutil.copyfile("data/templates/yaml/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
+
+    return None, {"chapter": next_chapter, "id": id}
