@@ -165,8 +165,9 @@ def push_src(commitmsg: str = "Some fixes to improve stability"):
     out, err = push(out, err)
     os.chdir("data")
     out, err = push(out, err)
+    os.chdir("..")
     
-    return HTMLResponse(f"{out}\n{err}")   
+    return HTMLResponse(f"{out}\n{err}")
 
 
 app.include_router(router)
