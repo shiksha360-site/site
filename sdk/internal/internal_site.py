@@ -146,10 +146,12 @@ def push_src(commitmsg: str = "Some fixes to improve stability"):
     """Warning: May hang the server"""
 
     def system(call, out, err):
-        with subprocess.Popen(call, stdout=subprocess.PIPE, shell=True, env=os.environ) as proc:
+        with subprocess.Popen(call, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ) as proc:
             cmd_out, cmd_err = proc.communicate()
             if not cmd_err:
                 cmd_err = b""
+            if not cmd_out:
+                cmd_out = b""
             return out+cmd_out.decode("utf-8"), err+cmd_err.decode("utf-8")
 
     def push(out, err):
