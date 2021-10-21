@@ -126,7 +126,7 @@ def build_data(selenium_scrape: bool):
     out.seek(0)
     err.seek(0)
 
-    return HTMLResponse(f"{out.read()}\n\nErrors:{err.read()}")
+    return HTMLResponse(f"{out.read()}\n\nErrors:\n{err.read()}")
 
 @router.post("/compilestatic")
 def compile_static():
@@ -139,7 +139,7 @@ def compile_static():
     out.seek(0)
     err.seek(0)
     
-    return HTMLResponse(f"{out.read()}\n\nErrors:{err.read()}")
+    return HTMLResponse(f"{out.read()}\n\nErrors:\n{err.read()}")
 
 @router.post("/push")
 def push_src(commitmsg: str = "Some fixes to improve stability"):
@@ -166,7 +166,7 @@ def push_src(commitmsg: str = "Some fixes to improve stability"):
     os.chdir("data")
     out, err = push(out, err)
     
-    return HTMLResponse(f"{out}\n\nErrors:{err}")   
+    return HTMLResponse(f"{out}\n\nErrors:\n{err}")   
 
 
 app.include_router(router)
