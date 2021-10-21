@@ -156,6 +156,9 @@ def push_src(commitmsg: str = "Some fixes to improve stability"):
         os.chdir("data")
         push()
     
+    out.seek(0)
+    err.seek(0)
+
     return HTMLResponse(f"{out.read()}\n\nErrors:{err.read()}")   
 
 
