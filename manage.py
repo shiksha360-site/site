@@ -76,8 +76,9 @@ def staticfiles_compile():
 @data.command("add")
 def data_new():
     """Creates a subject and/or a chapter in a subject"""
-    os.chdir("data")
-    create_new.create_new()
+    rc = create_new.create_new()
+    if not rc:
+        print(rc)
 
 @data.command("build")
 @click.option('--prod', default=False, help='Prod or no prod')

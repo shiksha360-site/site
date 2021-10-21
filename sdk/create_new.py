@@ -6,30 +6,30 @@ from sdk import common
 import uuid
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-def create_new():
-    boards = common.load_yaml("core/boards.yaml")
-    subjects = common.load_yaml("core/subjects.yaml")
+def create_new(grade: int = None, board: str = None, subject: str = None):
+    boards = common.load_yaml("data/core/boards.yaml")
+    subjects = common.load_yaml("data/core/subjects.yaml")
 
     # Create the grade
-    grade = common.input_int("Enter grade? ")
+    if not grade:
+        grade = common.input_int("Enter grade? ")
 
     if grade > 12 or grade <= 0:
-        print("Invalid grade")
-        sys.exit(-1)
+        return "Invalid grade"
 
-    grade_path = Path(f"grades/{grade}")
+    grade_path = Path(f"data/grades/{grade}")
 
-    board = input("Enter board? ")
+    if not board:
+        board = input("Enter board? ")
 
     if board.upper() not in boards:
-        print("Board not in core/boards.yaml!")
-        sys.exit(-1)
+        return "Board not in core/boards.yaml!"
 
-    subject = input("Enter subject name? ")
+    if not subject:
+        subject = input("Enter subject name? ")
 
     if subject.lower() not in subjects.keys():
-        print("Subject not in core/subjects.yaml!")
-        sys.exit(-1)  
+        return "Subject not in core/subjects.yaml!"
 
     # Actual creation
     subject_path = grade_path / board.lower() / subject.lower()
@@ -53,7 +53,7 @@ def create_new():
 
     # Basic setup of jinja2
     env = Environment(
-        loader=FileSystemLoader("templates/yaml"),
+        loader=FileSystemLoader("data/templates/yaml"),
         autoescape=select_autoescape()
     )
 
@@ -67,4 +67,4 @@ def create_new():
     with (chapter_path / "info.yaml").open("w") as info:
         info.write(data)
 
-    shutil.copyfile("templates/yaml/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
+    shutil.copyfile("data/templates/yaml/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
