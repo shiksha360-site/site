@@ -3,6 +3,7 @@ from yaml import load, Loader
 import json
 import sys
 import os
+import subprocess
 import random
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
@@ -51,3 +52,11 @@ def fix_versions(s: str):
     with open(s, "w") as old_index:
         old_index.write(index.replace("?v=", f"?v={new_version}"))
 
+def system(call, out, err):
+    with subprocess.Popen(call, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ) as proc:
+        cmd_out, cmd_err = proc.communicate()
+        if not cmd_err:
+            cmd_err = b""
+        if not cmd_out:
+            cmd_out = b""
+        return out+cmd_out.decode("utf-8"), err+cmd_err.decode("utf-8")
