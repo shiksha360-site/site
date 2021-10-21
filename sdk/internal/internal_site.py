@@ -17,9 +17,13 @@ from pathlib import Path
 import os
 import contextlib
 from io import StringIO
-import subprocess
 
-app = FastAPI(docs_url="/internal")
+key_data = common.load_yaml("data/core/internal_api.yaml")
+
+app = FastAPI(
+    docs_url="/internal",
+    description=key_data["description"]
+)
 
 router = APIRouter(
     prefix=f"/api/v{API_VERSION}/internal",
