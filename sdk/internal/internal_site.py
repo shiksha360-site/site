@@ -1,9 +1,13 @@
 from fastapi import FastAPI, Request, APIRouter, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import (
+    get_swagger_ui_html
+)
 from fastapi_restful.openapi import simplify_operation_ids
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError, ValidationError, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
+from jinja2 import Environment, FunctionLoader, select_autoescape
 from sdk.fetcher.yt.api import Youtube
 from .models import Chapter, Grade, Board, Subject, GitOP
 import asyncpg
@@ -23,9 +27,17 @@ from typing import List
 key_data = common.load_yaml("data/core/internal_api.yaml")
 
 app = FastAPI(
-    docs_url="/internal",
+    openapi_url="/openapi",
+    docs_url=None,
     description=key_data["description"]
 )
+
+@app.get("/internal", include_in_schema=False)
+async def custom_swagger_ui_html():
+    """Internal Admin Tool with Small Patch"""
+    return RedirectResponse("/swagger-ui/index.html")
+
+app.mount("/swagger-ui", StaticFiles(directory="sdk/internal/swagger_ui/4/out"), name="swagger-ui")
 
 router = APIRouter(
     prefix=f"/api/v{API_VERSION}/internal",
@@ -58,6 +70,9 @@ app.add_middleware(
     exc_handler=WebError.error_handler
 )
 
+
+
+# Actual code begins here
 
 @router.get("/ping")
 def ping():
@@ -199,6 +214,33 @@ def add_or_edit_topic(
     
     common.dump_yaml(info_yaml, data)
     return api_success(count=len(data["topics"].values()), mc_analyze=len(data["topics"].get("main", {}).get("subtopics", {}).values()), force_200=True)
+
+@router.post("/topics/move_to_end")
+def move_topic_to_end(
+    grade: Grade, 
+    board: Board, 
+    subject: Subject,
+    chapter: int,
+    topic_name_internal: str = Query(
+        ...,
+        description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
+        minlength=2,
+        regex="^(?![0-9.-])(?!.*[0-9.-]$)(?!.*\d-)(?!.*-\d)[a-zA-Z0-9-]+$" # To reject all special characters other than numbers and hyphens
+    ),
+    subtopic_parent: str = Query(
+        None,
+        description="Put the parent topic's internal topic name (topic_name_internal) if you wish to make a subtopic of a topic"
+    ),
+):
+    """Move topic to end"""
+    info_yaml = Path("data/grades") / str(grade.value) / board.value / subject.value / str(chapter) / "info.yaml"
+    if not info_yaml.exists():
+        return api_error("Chapter does not exist!", status_code=404)
+    data = common.load_yaml(info_yaml, ruamel_type="rt")
+
+    if not subtopic_parent:
+        pass
+
 
 @router.post("/topics/videos")
 def new_video():
