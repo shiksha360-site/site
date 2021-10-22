@@ -91,3 +91,6 @@ def system(call, out, err):
         if not cmd_out:
             cmd_out = b""
         return out+cmd_out.decode("utf-8"), err+cmd_err.decode("utf-8")
+
+def restart():
+    os.execv(sys.executable, ['python3.10'] + [sys.argv[0]])

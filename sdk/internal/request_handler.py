@@ -9,12 +9,14 @@ import datetime
 from lynxfall.utils.fastapi import api_versioner
 import time
 from .cfg import API_VERSION
+import os
 
 class KalanRequestHandler(BaseHTTPMiddleware):
     """Request Handler for Fates List"""
     def __init__(self, app, *, exc_handler):
         super().__init__(app)
         self.exc_handler = exc_handler
+        self.cwd = os.getcwd()
         
         # Methods that should be allowed by CORS
         self.cors_allowed = "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS"
@@ -44,6 +46,10 @@ class KalanRequestHandler(BaseHTTPMiddleware):
         
     async def dispatch(self, request, call_next):
         """Run _dispatch, if that fails, log error and do exc handler"""
+        # Ensure we are always in cwd
+        if os.getcwd() != self.cwd:
+            os.chdir(self.cwd)
+
         request.state.error_id = str(uuid.uuid4())
         request.state.curr_time = str(datetime.datetime.now())
         path = request.scope["path"]
@@ -108,5 +114,5 @@ class KalanRequestHandler(BaseHTTPMiddleware):
             if request.method == "OPTIONS" and is_api:
                 response.status_code = 204
                 response.headers["Allow"] = self.cors_allowed
-       
+
         return response

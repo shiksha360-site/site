@@ -6,7 +6,7 @@ from sdk import common
 import uuid
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-def create_new(grade: int, board: str, subject: str, name: str):
+def create_new(grade: int, board: str, subject: str, name: str, iname: str):
     boards = common.load_yaml("data/core/boards.yaml")
     subjects = common.load_yaml("data/core/subjects.yaml")
 
@@ -48,16 +48,12 @@ def create_new(grade: int, board: str, subject: str, name: str):
 
     info = env.get_template("chapter_info.yaml")
 
-    id = str(uuid.uuid4())
-
     data = info.render(
-        id=id,
+        iname=iname,
         name=name
     )
 
     with (chapter_path / "info.yaml").open("w") as info:
         info.write(data)
-
-    shutil.copyfile("data/templates/yaml/chapter_extresources.yaml", f"{chapter_path}/extres.yaml")
 
     return None, {"chapter": next_chapter, "id": id}

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import ForwardRef, List, Optional, Dict
 import uuid
 from enum import IntEnum, Enum
+from sdk import common
 
 class Grade(IntEnum):
     grade6 = 6
@@ -13,15 +14,13 @@ class Grade(IntEnum):
     grade11 = 11
     grade12 = 12
 
-class Board(str, Enum):
-    cbse = "cbse"
+Board = Enum('Board', {
+    k: k for k in (common.load_yaml("data/core/boards.yaml"))
+})
 
-class Subject(str, Enum):
-    biology = "biology"
-    physics = "physics"
-    chemistry = "chemistry"
-    math = "math"
-    english = "english"
+Subject = Enum('Subject', {
+    k: k for k in (common.load_yaml("data/core/subjects.yaml").keys())
+})
 
 class GitOP(str, Enum):
     push = "push"
@@ -42,7 +41,7 @@ class Topic(BaseModel):
 Topic.update_forward_refs()
 
 class ChapterData(BaseModel):
-    id: uuid.UUID
+    iname: str
     name: str
     grade: int
     board: str

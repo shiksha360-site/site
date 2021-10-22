@@ -26,21 +26,25 @@ from typing import List
 
 key_data = common.load_yaml("data/core/internal_api.yaml")
 
+nsc_regex ="^(?![0-9.-])(?!.*[0-9.-]$)(?!.*\d-)(?!.*-\d)[a-zA-Z0-9-]+$" # To reject all special characters other than numbers and hyphens
+
+
 app = FastAPI(
     openapi_url="/openapi",
     docs_url=None,
+    title=key_data["title"],
     description=key_data["description"]
 )
 
+@app.get("/", include_in_schema=False)
 @app.get("/internal", include_in_schema=False)
 async def custom_swagger_ui_html():
     """Internal Admin Tool with Small Patch"""
     return RedirectResponse("/swagger-ui/index.html")
 
-app.mount("/swagger-ui", StaticFiles(directory="sdk/internal/swagger_ui/4/out"), name="swagger-ui")
+app.mount("/swagger-ui", StaticFiles(directory="sdk/internal/swagger_ui/4"), name="swagger-ui")
 
 router = APIRouter(
-    prefix=f"/api/v{API_VERSION}/internal",
     tags=["Internal"]
 )
 
@@ -71,24 +75,67 @@ app.add_middleware(
 )
 
 
-
 # Actual code begins here
 
-@router.get("/ping")
-def ping():
-    return api_success()
+
+@router.put("/subjects")
+def add_or_edit_subject(
+    subject_name_friendly: str = Query(
+        ...,
+        description="Friendly name for the subject that is user-visible"
+    ),
+    subject_name_internal: str = Query(
+        ...,
+        description="Internal subject name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
+        minlength=2,
+        regex=nsc_regex # To reject all special characters other than numbers and hyphens
+    ),
+    description: str = Query(
+        ...,
+        description="Description for the subject. This is just there in case we want it in the future (and so we can be more like Khan Academy in design)"
+    ),
+    image: str = Query(
+        ...,
+        description="Image for the subject. This is just there in case we want it in the future (and so we can be more like Khan Academy in design)"
+    ),
+    alias: str = Query(
+        None, 
+        description="(Internal Tool Only) Alias for the subject for grade 6 and below. Example is science for biology/physics/chemistry. This is present due to current limitations in swagger. Leave blank to not alias. Only used in internal tool",
+    ),
+    supported_grades: List[int] = Query(
+        ...,
+        description="What grades this subject supports"
+    )
+):
+    """**NOTE** A restart is needed for some changes to take effect"""
+    subjects = common.load_yaml("data/core/subjects.yaml", ruamel_type="rt")
+    subjects[subject_name_internal] = {
+        "name": subject_name_friendly,
+        "desc": description,
+        "image": image,
+        "alias": alias,
+        "supported-grades": supported_grades
+    }
+    common.dump_yaml("data/core/subjects.yaml", subjects)
+    return api_success(reason="You will need to restart the webserver for the new subjects to be populated!")
 
 @router.post("/chapters")
 def new_chapter(
     grade: Grade, 
     board: Board, 
     subject: Subject, 
-    name: str = Query(..., description="Name of the chapter")
+    name: str = Query(..., description="Name of the chapter"),
+    iname: str = Query(
+        ..., 
+        description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
+        minlength=2,
+        regex=nsc_regex
+    )
 ):
     """
     Creates a new chapter in the syllabus
     """
-    rc, ctx = create_new(grade=grade.value, board=board.value, subject=subject.value, name=name)
+    rc, ctx = create_new(grade=grade.value, board=board.value.lower(), subject=subject.value, name=name, iname=iname)
     if rc:
         return api_error(rc)
     return api_success(ctx=ctx)
@@ -103,7 +150,7 @@ def edit_chapter_props(
     study_time: int = Query(None, description="Study time of the chapter")
 ):
     """Edits the chapter properties (currently only name and study time)"""
-    info_yaml = Path("data/grades") / str(grade.value) / board.value / subject.value / str(chapter) / "info.yaml"
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -112,6 +159,7 @@ def edit_chapter_props(
     if study_time:
         data["study-time"] = study_time
     common.dump_yaml(info_yaml, data)
+    return api_success()
 
 @router.get("/chapters", response_model=Chapter)
 def get_chapters(grade: int = None, board: str = None, subject: str = None, chapter: int = None, parse_full: bool = False):
@@ -139,12 +187,10 @@ def get_chapters(grade: int = None, board: str = None, subject: str = None, chap
         except Exception:
             pass
 
-        if parse_full and app.state.is_internal:
-            res = common.load_yaml(str(path).replace("info.yaml", "extres.yaml"))
+        if parse_full:
             # Parse all the topics
             for topic in data["topics"]:
-                data["topics"], res = gen_info.parse_topic(None, data, res, None, None, topic, pretend=True)
-            data["topics"]["res"] = res
+                data["topics"] = gen_info.parse_topic(None, data, topic)
 
         chapters.append(data)
 
@@ -164,7 +210,7 @@ def add_or_edit_topic(
         ...,
         description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
         minlength=2,
-        regex="^(?![0-9.-])(?!.*[0-9.-]$)(?!.*\d-)(?!.*-\d)[a-zA-Z0-9-]+$" # To reject all special characters other than numbers and hyphens
+        regex=nsc_regex # To reject all special characters other than numbers and hyphens
     ),
     subtopic_parent: str = Query(
         None,
@@ -186,7 +232,7 @@ def add_or_edit_topic(
 
     **NOTE** This does not handle adding videos to a topic. Use /topics/videos for that
     """
-    info_yaml = Path("data/grades") / str(grade.value) / board.value / subject.value / str(chapter) / "info.yaml"
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -215,7 +261,7 @@ def add_or_edit_topic(
     common.dump_yaml(info_yaml, data)
     return api_success(count=len(data["topics"].values()), mc_analyze=len(data["topics"].get("main", {}).get("subtopics", {}).values()), force_200=True)
 
-@router.post("/topics/move_to_end")
+@router.post("/topics/move_to_end", deprecated=True)
 def move_topic_to_end(
     grade: Grade, 
     board: Board, 
@@ -225,15 +271,15 @@ def move_topic_to_end(
         ...,
         description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
         minlength=2,
-        regex="^(?![0-9.-])(?!.*[0-9.-]$)(?!.*\d-)(?!.*-\d)[a-zA-Z0-9-]+$" # To reject all special characters other than numbers and hyphens
+        regex=nsc_regex # To reject all special characters other than numbers and hyphens
     ),
     subtopic_parent: str = Query(
         None,
         description="Put the parent topic's internal topic name (topic_name_internal) if you wish to make a subtopic of a topic"
     ),
 ):
-    """Move topic to end"""
-    info_yaml = Path("data/grades") / str(grade.value) / board.value / subject.value / str(chapter) / "info.yaml"
+    """Move topic to end. **THIS IS DEPRECATED AS IT DOES NOT WORK YET/IS STILL BEING IMPLEMENTED**"""
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -255,7 +301,6 @@ def build_data(selenium_scrape: bool):
     This will build the data needed for the client to run
     """
     yt = Youtube()
-    os.chdir("data")
     out = StringIO()
     err = StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -263,8 +308,6 @@ def build_data(selenium_scrape: bool):
 
     out.seek(0)
     err.seek(0)
-
-    os.chdir("..")
 
     return HTMLResponse(f"{out.read()}\n\nErrors:\n{err.read()}")
 
@@ -305,9 +348,15 @@ def git(commitmsg: str = "Some fixes to improve stability", op: GitOP = GitOP.pu
     out, err = f(out, err)
     os.chdir("data")
     out, err = f(out, err)
-    os.chdir("..")
     
     return HTMLResponse(f"{out}\n{err}")
+
+
+@router.post("/reboot")
+def reboot():
+    """**NOTE** This will not return anything"""
+    common.restart()
+
 
 app.include_router(router)
 

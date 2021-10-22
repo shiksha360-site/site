@@ -11,6 +11,7 @@ from sdk.fetcher import scrape, scrape_cache_clear
 from sdk.fetcher.yt import Youtube
 
 def gen_info(yt: Youtube, selenium_scrape: bool = False):
+    os.chdir("data")
     if selenium_scrape:
         session = video_crawler.prepare()
     else:
@@ -116,15 +117,13 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
                 print(f"WARNING: Invalid chapter {chapter.name}")
                 continue
 
-            chapter_res = common.load_yaml(chapter / "extres.yaml")
-
             build_chapter_dir = pathlib.Path(str(chapter).replace("grades", "build/grades", 1))
             build_chapter_dir.mkdir(parents=True)
 
             # Parse all the topics
             for topic in chapter_info["topics"]:
-                chapter_info["topics"], chapter_res = parse_topic(yt, chapter_info, chapter_res, build_chapter_dir, session, topic)
-                                                
+                chapter_info["topics"] = parse_topic(yt, chapter_info, topic)
+
             # Write info
             with (build_chapter_dir / "info.min.json").open("w") as chapter_info_json:
                 common.write_min_json(chapter_info, chapter_info_json)
@@ -160,9 +159,12 @@ def gen_info(yt: Youtube, selenium_scrape: bool = False):
                 "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="hi"))
             }
         }, keystone)
+    
+    if os.getcwd().endswith("data"):
+        os.chdir("..")
 
 
-def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, session, topic, pretend=False):
+def parse_topic(yt: Youtube, chapter_info, topic):
     # Fix and add proper reject stuff
     if chapter_info["topics"][topic].get("reject") is None:
         chapter_info["topics"][topic]["reject"] = []
@@ -179,39 +181,6 @@ def parse_topic(yt: Youtube, chapter_info, chapter_res, build_chapter_dir, sessi
     if yt:
         os.chdir("..")
         scrape(yt, chapter_info, topic)
+        os.chdir("data")
 
-    # Check chapter res and make fixes
-    for subtopic in chapter_res.keys():
-        # Ensure all None keys are made empty lists
-        for key in chapter_res[subtopic].keys():
-            if not chapter_res[subtopic].get(key):
-                chapter_res[subtopic][key] = []
-                        
-            value = chapter_res[subtopic][key]
-                    
-            if isinstance(value, list):
-                # Go through list of all videos and scrape the site for title
-                for i, video in enumerate(value):
-                    if not isinstance(video, dict):
-                        continue
-
-                    if video.get("js-needed") and session:
-                        vdata = video_crawler.get_video_with_js(session, video["link"])
-                    else:
-                        vdata = video_crawler.get_video_bs4(video["link"])
-                    value[i] = vdata
-
-        # Make the subtopic file
-        if not pretend:
-            os.chdir("data")
-            with (build_chapter_dir / f"res-{subtopic}.min.json").open("w") as fp:
-                common.write_min_json(chapter_res[subtopic], fp)
-            os.chdir("..")
-
-    if not pretend:
-        try:
-            os.chdir("data")
-        except:
-            pass
-
-    return chapter_info["topics"], chapter_res
+    return chapter_info["topics"]
