@@ -1,13 +1,9 @@
 from fastapi import FastAPI, Request, APIRouter, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.openapi.docs import (
-    get_swagger_ui_html
-)
 from fastapi_restful.openapi import simplify_operation_ids
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError, ValidationError, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from jinja2 import Environment, FunctionLoader, select_autoescape
 from sdk.fetcher.yt.api import Youtube
 from .models import Chapter, Grade, Board, Subject, GitOP
 import asyncpg
@@ -31,7 +27,7 @@ nsc_regex ="^(?![0-9.-])(?!.*[0-9.-]$)(?!.*\d-)(?!.*-\d)[a-zA-Z0-9-]+$" # To rej
 
 app = FastAPI(
     openapi_url="/openapi",
-    docs_url=None,
+    docs_url=None, # We use custom swagger
     title=key_data["title"],
     description=key_data["description"]
 )
@@ -39,9 +35,10 @@ app = FastAPI(
 @app.get("/", include_in_schema=False)
 @app.get("/internal", include_in_schema=False)
 async def custom_swagger_ui_html():
-    """Internal Admin Tool with Small Patch"""
+    """Internal Admin Tool"""
     return RedirectResponse("/swagger-ui/index.html")
 
+# Mount custom swagger
 app.mount("/swagger-ui", StaticFiles(directory="sdk/internal/swagger_ui/4"), name="swagger-ui")
 
 router = APIRouter(
