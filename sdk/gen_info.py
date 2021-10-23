@@ -13,13 +13,12 @@ from sdk.fetcher.yt import Youtube
 if os.environ.get("HTTP_SCRAPE_MODE"):
     from sdk import video_crawler
 
-def gen_info(yt: Youtube, selenium_scrape: bool = False):
+def gen_info(yt: Youtube):
     os.chdir("data")
-    if selenium_scrape and os.environ.get("HTTP_SCRAPE_MODE"):
+    if os.environ.get("HTTP_SCRAPE_MODE"):
         session = video_crawler.prepare()
     else:
         session = None
-        selenium_scrape = False
 
     # Basic setup
     env = Environment(

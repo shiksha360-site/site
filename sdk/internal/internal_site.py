@@ -326,17 +326,17 @@ def new_video():
     ...
 
 @router.post("/data/build")
-def build_data(selenium_scrape: bool):
+def build_data():
     """
     Warning: May hang the server
-    e
+    
     This will build the data needed for the client to run
     """
     yt = Youtube()
     out = StringIO()
     err = StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        gen_info.gen_info(yt, selenium_scrape=selenium_scrape)
+        gen_info.gen_info(yt)
 
     out.seek(0)
     err.seek(0)
