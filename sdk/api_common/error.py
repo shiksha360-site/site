@@ -4,7 +4,6 @@ from http import HTTPStatus
 from fastapi.responses import ORJSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from lynxfall.utils.fastapi import api_error
-import asyncio
 import inspect
 import traceback
 import uuid

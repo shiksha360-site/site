@@ -10,8 +10,8 @@ import asyncpg
 from lynxfall.utils.fastapi import api_success, api_error
 from sdk.create_new import create_new
 from .cfg import API_VERSION
-from .error import WebError
-from .request_handler import KalanRequestHandler
+from sdk.api_common.error import WebError
+from sdk.api_common.request_handler import KalanRequestHandler
 from ruamel.yaml import YAML
 from sdk import common, gen_info, compilestatic
 from pathlib import Path
@@ -40,7 +40,7 @@ async def custom_swagger_ui_html():
     return RedirectResponse("/swagger-ui/index.html")
 
 # Mount custom swagger
-app.mount("/swagger-ui", StaticFiles(directory="sdk/internal/swagger_ui/4"), name="swagger-ui")
+app.mount("/swagger-ui", StaticFiles(directory="sdk/api_common/swagger_ui/4"), name="swagger-ui")
 
 router = APIRouter(
     tags=["Internal"]
@@ -69,7 +69,8 @@ async def _fl_error_handler(request, exc):
 # Add request handler
 app.add_middleware(
     KalanRequestHandler, 
-    exc_handler=WebError.error_handler
+    exc_handler=WebError.error_handler,
+    api_ver=API_VERSION
 )
 
 

@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS topic_resources (
     grade INTEGER NOT NULL,
@@ -13,4 +14,13 @@ CREATE TABLE IF NOT EXISTS topic_resources (
     resource_author TEXT NOT NULL, -- The author of a resource
     resource_metadata jsonb NOT NULL DEFAULT '{}'::jsonb, -- Any metadata such as view counts etc
     disabled BOOLEAN DEFAULT FALSE -- Whether the resource is disabled or not
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    username TEXT NOT NULL,
+    email TEXT,
+    pass TEXT NOT NULL,
+    token TEXT NOT NULL,
+    preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+    video_preferences JSONB NOT NULL DEFAULT '{}'::jsonb
 );

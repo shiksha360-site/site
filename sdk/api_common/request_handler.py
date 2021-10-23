@@ -8,14 +8,14 @@ import uuid
 import datetime
 from lynxfall.utils.fastapi import api_versioner
 import time
-from .cfg import API_VERSION
 import os
 
 class KalanRequestHandler(BaseHTTPMiddleware):
-    """Request Handler for Fates List"""
-    def __init__(self, app, *, exc_handler):
+    """Request Handler for Fates List ported to Kalam Academy/Infilearn"""
+    def __init__(self, app, *, exc_handler, api_ver):
         super().__init__(app)
         self.exc_handler = exc_handler
+        self.api_ver = api_ver
         self.cwd = os.getcwd()
         
         # Methods that should be allowed by CORS
@@ -77,7 +77,7 @@ class KalanRequestHandler(BaseHTTPMiddleware):
         
         if is_api:
             # Handle /api as /api/vX excluding docs + pinned requests
-            request.scope, api_ver = api_versioner(request, API_VERSION)
+            request.scope, api_ver = api_versioner(request, self.api_ver)
     
         start_time = time.time()
         
