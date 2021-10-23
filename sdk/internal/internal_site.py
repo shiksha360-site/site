@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Request, APIRouter, Query
+import shutil
+from fastapi import FastAPI, APIRouter, Query, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi_restful.openapi import simplify_operation_ids
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -18,8 +19,10 @@ from pathlib import Path
 import os
 import contextlib
 from io import StringIO
-from typing import List
+from typing import Dict, List
 from copy import deepcopy
+import orjson
+import uuid
 
 key_data = common.load_yaml("data/core/internal_api.yaml")
 
@@ -48,7 +51,7 @@ router = APIRouter(
 
 @app.on_event("startup")
 async def on_startup():
-    app.state.db = await asyncpg.create_pool(database="kalam")
+    app.state.db = await asyncpg.create_pool()
     app.state.ipc_up = True # We use lots of code from Fates List, so we need to set these to True
     app.state.first_run = True
     app.state.gunicorn = False
@@ -126,7 +129,7 @@ def new_chapter(
     name: str = Query(..., description="Name of the chapter"),
     iname: str = Query(
         ..., 
-        description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
+        description="Internal chapter name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible\n\n**Do not reuse the same internal name more than once**",
         minlength=2,
         regex=nsc_regex
     )
@@ -134,7 +137,7 @@ def new_chapter(
     """
     Creates a new chapter in the syllabus
     """
-    rc, ctx = create_new(grade=grade.value, board=board.value.lower(), subject=subject.value, name=name, iname=iname)
+    rc, ctx = create_new(grade=grade.value, board=board.value.lower(), subject=subject.value.lower(), name=name, iname=iname)
     if rc:
         return api_error(rc)
     return api_success(ctx=ctx)
@@ -149,7 +152,7 @@ def edit_chapter_props(
     study_time: int = Query(None, description="Study time of the chapter")
 ):
     """Edits the chapter properties (currently only name and study time)"""
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -175,7 +178,7 @@ def get_chapters(grade: int = None, board: str = None, subject: str = None, chap
             continue
         elif chapter and _chapter != chapter:
             continue
-        data = common.load_yaml(path)
+        data = common.load_yaml(path, ruamel_type="rt")
 
         data["subject"] = _subject
         data["grade"] = _grade
@@ -235,7 +238,7 @@ def add_or_edit_topic(
 
     **NOTE** This does not handle adding videos to a topic. Use /topics/videos for that
     """
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -291,7 +294,7 @@ def change_topic_position(
         description="Put the parent topic's internal topic name (topic_name_internal) if you wish to make a subtopic of a topic"
     ),
 ):
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -321,10 +324,141 @@ def change_topic_position(
     return api_success()
 
 
-@router.post("/topics/videos")
-def new_video():
-    """Use /video_json_creator to create the Video JSON"""
-    ...
+@router.put("/topics/resources")
+async def new_resources(
+    grade: Grade, 
+    board: Board, 
+    subject: Subject,
+    chapter: int,
+    topic_name_internal: str = Query(
+        ...,
+        description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
+        minlength=2,
+        regex=nsc_regex # To reject all special characters other than numbers and hyphens
+    ),
+    subtopic_parent: str = Query(
+        "",
+        description="Put the parent topic's internal topic name (topic_name_internal) if you wish to make a subtopic of a topic"
+    ),
+    resource_type: common.ResourceList = Query(
+        ...,
+        description="Resource type"
+    ),
+    resource_title: str = Query(
+        None,
+        description="**Optional for videos on youtube as those are gotten using the youtube api if no resource title is provided**\n\nThe title of the resource. On youtube videos, this is the name of the video by default *unless* overriden"
+    ),
+    resource_url: str = Query(
+        ...,
+        description="Resource URL"
+    ),
+    resource_description: str = Query(
+        None,
+        description="Optional description for the resource"
+    ),
+    resource_author: str = Query(
+        None,
+        description="**Optional for videos on youtube as those are gotten using the youtube api if no resource author is provided**.\n\nThe author of the resource"
+    )
+):
+    """Create a new video or edits an existing video"""
+    repaired = False
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
+    if not info_yaml.exists():
+        return api_error("Chapter does not exist!", status_code=404)
+    
+    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.min.json"
+
+    if not chapter_listing.exists():
+        return api_error("You must perform atleast one data build before doing this")
+
+    with chapter_listing.open() as fp:
+        chapter_listing_json = orjson.loads(fp.read())
+    
+    print(chapter_listing_json)
+
+    chapter_iname = chapter_listing_json[str(chapter)]["iname"]
+
+    resource_type = common.get_resource_by_name(resource_type.name)
+
+    if subtopic_parent:
+        sql = "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+    else:
+        sql = "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent != $3 AND resource_url = $4",
+
+
+    check = await app.state.db.fetch(
+        "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+        chapter_iname,
+        topic_name_internal,
+        subtopic_parent,
+        resource_url
+    )
+    print(check)
+    if check and len(check) > 1:
+        # Corrupt resource alert
+        repaired = True
+        id = check[0]["id"] # Remove all but first resource
+        await app.state.db.execute(
+            "DELETE FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+            chapter_iname,
+            topic_name_internal,
+            subtopic_parent,
+            resource_url
+        )
+        res_meta = orjson.loads(check[0]["resource_metadata"])
+    elif check and len(check) == 1:
+        # Delete old preserving metadata
+        id = check[0]["id"]
+        await app.state.db.execute(
+            "DELETE FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+            chapter_iname,
+            topic_name_internal,
+            subtopic_parent,
+            resource_url
+        )
+        res_meta = orjson.loads(check[0]["resource_metadata"])
+    else:
+        res_meta = {}
+        id = str(uuid.uuid4())
+    
+    if "youtube.com" in resource_url and "?v=" in resource_url:
+        video_id = resource_url.split("?v=")[1].split("&")[0] # Extract video id
+        yt = Youtube()
+        video = yt.get_video(video_id)
+        for video_item in video.loop():
+            resource_title = resource_title or video_item["snippet"]["title"]
+            resource_author = resource_author or video_item["snippet"]["channelTitle"]
+            res_meta["yt_video_url"] = video_id
+            res_meta["view_count"] = int(video_item["statistics"]["viewCount"])
+
+    if not resource_author:
+        return api_error("You must set resource_author")
+    elif not resource_title:
+        return api_error("You must set resource_title")
+
+    id = await app.state.db.fetchval(
+        """INSERT INTO topic_resources (grade, board, subject, chapter_num, chapter_iname, topic_iname, subtopic_parent,
+        resource_type, resource_title, resource_description, resource_url, resource_author, resource_metadata, resource_id) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING resource_id""",
+        int(grade.value),
+        board.value.lower(),
+        subject.value.lower(),
+        chapter,
+        chapter_iname,
+        topic_name_internal,
+        subtopic_parent,
+        resource_type.value,
+        resource_title,
+        resource_description,
+        resource_url,
+        resource_author,
+        orjson.dumps(res_meta).decode("utf-8"),
+        id     
+    )
+
+    return api_success(repaired=repaired, id=str(id), force_200=True)
+
 
 @router.post("/data/build")
 def build_data():
@@ -384,6 +518,34 @@ def git(commitmsg: str = "Some fixes to improve stability", op: GitOP = GitOP.pu
     
     return HTMLResponse(f"{out}\n{err}")
 
+@router.delete("/chapters")
+async def delete_chapter(
+    grade: Grade, 
+    board: Board, 
+    subject: Subject,
+    chapter: int,  
+):
+    chapter_dir = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter)
+    if not chapter_dir.exists():
+        return api_error("Chapter does not exist!", status_code=404)
+
+    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.min.json"
+
+    if not chapter_listing.exists():
+        return api_error("You must perform atleast one data build before doing this")
+
+    with chapter_listing.open() as fp:
+        chapter_listing_json = orjson.loads(fp.read())
+    
+    print(chapter_listing_json)
+
+    chapter_iname = chapter_listing_json[str(chapter)]["iname"]
+
+    shutil.rmtree(str(chapter_dir))
+    await app.state.db.execute(
+        "DELETE FROM topic_resources WHERE chapter_iname = $1",
+        chapter_iname
+    )
 
 @router.post("/reboot")
 def reboot():

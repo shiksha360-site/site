@@ -108,14 +108,14 @@ def gen_info(yt: Youtube):
             print(f"Adding chapter {chapter.name}")
 
             # Chapter handling begins here
-            chapter_info = common.load_yaml(chapter / "info.yaml")
+            chapter_info = common.load_yaml(chapter / "info.yaml", ruamel_type="rt")
 
             chapter_info["subject"] = subject
             chapter_info["grade"] = grade
             chapter_info["board"] = board
 
             try:
-                chapter_listing[int(chapter.name)] = chapter_info["name"]
+                chapter_listing[int(chapter.name)] = {"name": chapter_info["name"], "iname": chapter_info["iname"]}
             except ValueError:
                 print(f"WARNING: Invalid chapter {chapter.name}")
                 continue

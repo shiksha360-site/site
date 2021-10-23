@@ -6,7 +6,7 @@ import os
 import subprocess
 import random
 import threading
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
@@ -17,8 +17,13 @@ class Resource(IntEnum):
     interactive = 3 # Truly interative experiments like PHeT
     class_note = 4 # Class Notes
     revision_note = 5 # Revision Notes
-    take_a_test = 6 # Take a test
+    mock_test = 6 # Take a test
 
+def get_resource_by_name(name: str) -> Resource:
+    """Given the resource name, return the enum itself"""
+    return getattr(Resource, name)
+
+ResourceList = Enum('ResourceList', {res.name: res.name.replace("_", " ").title() for res in list(Resource)})
 
 class YamlLoadCache():
     def __init__(self):

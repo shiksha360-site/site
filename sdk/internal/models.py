@@ -23,7 +23,7 @@ Board = Enum('Board', {
 })
 
 Subject = Enum('Subject', {
-    k: k for k in (common.load_yaml("data/core/subjects.yaml").keys())
+    k: k.title() for k in (common.load_yaml("data/core/subjects.yaml").keys())
 })
 
 class GitOP(str, Enum):
