@@ -5,17 +5,21 @@ import pathlib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List, Set
 from copy import deepcopy
-from sdk import common, video_crawler
+from sdk import common
 from sdk.fetcher import scrape, scrape_cache_clear
 
 from sdk.fetcher.yt import Youtube
 
+if os.environ.get("HTTP_SCRAPE_MODE"):
+    from sdk import video_crawler
+
 def gen_info(yt: Youtube, selenium_scrape: bool = False):
     os.chdir("data")
-    if selenium_scrape:
+    if selenium_scrape and os.environ.get("HTTP_SCRAPE_MODE"):
         session = video_crawler.prepare()
     else:
         session = None
+        selenium_scrape = False
 
     # Basic setup
     env = Environment(

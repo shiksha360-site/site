@@ -22,6 +22,13 @@ def create_new(grade: int, board: str, subject: str, name: str, iname: str):
     if subject.lower() not in subjects.keys():
         return "Subject not in core/subjects.yaml!", None
 
+    # Check and handle alias and supported-grades
+    if grade not in subjects.get("supported-grades", [grade]):
+        return "Grade not supported by subject", None
+    
+    if grade < 11:
+        subject = subject.get("alias", subject)
+
     # Actual creation
     subject_path = grade_path / board.lower() / subject.lower()
 

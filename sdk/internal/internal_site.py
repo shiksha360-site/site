@@ -19,6 +19,7 @@ import os
 import contextlib
 from io import StringIO
 from typing import List
+from copy import deepcopy
 
 key_data = common.load_yaml("data/core/internal_api.yaml")
 
@@ -97,7 +98,7 @@ def add_or_edit_subject(
     ),
     alias: str = Query(
         None, 
-        description="(Internal Tool Only) Alias for the subject for grade 6 and below. Example is science for biology/physics/chemistry. This is present due to current limitations in swagger. Leave blank to not alias. Only used in internal tool",
+        description="(Internal Tool Only) Alias for the subject for grade 10 and below. Example is science for biology/physics/chemistry. This is present due to current limitations in swagger. Leave blank to not alias. Only used in internal tool",
     ),
     supported_grades: List[int] = Query(
         ...,
@@ -199,6 +200,10 @@ def add_or_edit_topic(
     board: Board, 
     subject: Subject,
     chapter: int,
+    position: int = Query(
+        -1,
+        description="Position of the topic. Changing this will change the position of the topi. Set -1 for end. 0 is first position"
+    ),
     topic_name_friendly: str = Query(
         ..., 
         description="The user-visible/friendly name for the topic. Use `$name` if you wish for the topic name to be the name of the chapter itself",
@@ -233,6 +238,7 @@ def add_or_edit_topic(
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
+
     ext = {
         "name": topic_name_friendly,
         "accept": accept_tags,
@@ -245,25 +251,34 @@ def add_or_edit_topic(
             bak = data["topics"][topic_name_internal]["subtopics"]
         else:
             bak = None
-        data["topics"][topic_name_internal] = ext
+        if position > -1:
+            data["topics"].insert(position, topic_name_internal, ext)
+        else:
+            data["topics"][topic_name_internal] = ext
         data["topics"][topic_name_internal]["subtopics"] = bak
     else:
         if not data["topics"].get(subtopic_parent):
             return api_error("Parent topic does not exist!")
         if not data["topics"][subtopic_parent]["subtopics"]:
             data["topics"][subtopic_parent]["subtopics"] = {}
-        data["topics"][subtopic_parent]["subtopics"][topic_name_internal] = ext
-        data["topics"][subtopic_parent]["subtopics"][topic_name_internal]
+        if position > -1:
+            data["topics"][subtopic_parent]["subtopics"].insert(position, topic_name_internal, ext)
+        else:
+            data["topics"][subtopic_parent]["subtopics"][topic_name_internal] = ext
     
     common.dump_yaml(info_yaml, data)
     return api_success(count=len(data["topics"].values()), mc_analyze=len(data["topics"].get("main", {}).get("subtopics", {}).values()), force_200=True)
 
-@router.post("/topics/move_to_end", deprecated=True)
-def move_topic_to_end(
+@router.patch("/topics/position")
+def change_topic_position(
     grade: Grade, 
     board: Board, 
     subject: Subject,
     chapter: int,
+    position: int = Query(
+        -1,
+        description="Position of the topic. Changing this will change the position of the topic. Set -1 for end. 0 is first position"
+    ),
     topic_name_internal: str = Query(
         ...,
         description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
@@ -275,14 +290,34 @@ def move_topic_to_end(
         description="Put the parent topic's internal topic name (topic_name_internal) if you wish to make a subtopic of a topic"
     ),
 ):
-    """Move topic to end. **THIS IS DEPRECATED AS IT DOES NOT WORK YET/IS STILL BEING IMPLEMENTED**"""
     info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
 
     if not subtopic_parent:
-        pass
+        if not data["topics"].get(topic_name_internal):
+            return api_error("Topic does not exist!")
+        bak = deepcopy(data["topics"][topic_name_internal])
+        del data["topics"][topic_name_internal]
+        if position > -1:
+            data["topics"].insert(position, topic_name_internal, bak)
+        else:
+            data["topics"][topic_name_internal] = bak
+    else:
+        if not data["topics"].get(subtopic_parent):
+            return api_error("Parent topic does not exist!")
+        if not data["topics"][subtopic_parent].get("subtopics", {}).get(topic_name_internal):
+            return api_error("This topic does not have this subtopic!")
+        bak = deepcopy(data["topics"][subtopic_parent]["subtopics"][topic_name_internal])
+        del data["topics"][subtopic_parent]["subtopics"][topic_name_internal]
+        if position > -1:
+            data["topics"][subtopic_parent]["subtopics"].insert(position, topic_name_internal, bak)
+        else:
+            data["topics"][subtopic_parent]["subtopics"][topic_name_internal] = bak
+    
+    common.dump_yaml(info_yaml, data)
+    return api_success()
 
 
 @router.post("/topics/videos")
