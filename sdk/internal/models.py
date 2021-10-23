@@ -40,7 +40,6 @@ class Topic(BaseModel):
     accept: Optional[List[str]] = []
     reject: Optional[List[str]] = []
     subtopics: Optional[Topic] = None
-    res: Optional[dict] = None
 
 Topic.update_forward_refs()
 

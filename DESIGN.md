@@ -25,19 +25,22 @@ Ultimately, this data is 'compiled' from YAML into minified json files (min.json
 
 We still do not have a solution to automate getting the syllabus or create the keywords/tags from the syllabus yet. This is currently done manually (see [Low Level Design](#low-level-design)).
 
-## Process
+## Current Process
+The script currently loops through all the YAML files, fixes the output if there are any missing/blank fields. A 'keystone' folder is also created to house data that is **key** to the site but is **not** something that is part of the actual problem or solution (example being Table of Contents, team information, language information, information about boards, information about extra sources, some precompiled HTML etc)
 
-### Scraping
-For every topic in each grade, we have a script that loops through these topics, parses them and then give each topic + subtopic to the master scraper. The master scraper goes through the list of scrapers and runs them. Each scraper gets access to the youtube api, channel info (for youtube), chapter info, subtopic and the "scrape cache". The chapter info also contains the grade, subject and board information. 
+## Internal Tool
+We have an internal tool (right now FastAPI+Swagger 4.0 so we don't have to code the UI for our admin tool ourselves) to make adding of the syllabus/topics/videos easier along with the videos associated with it.
 
-Using accept and reject keywords found in the chapter info, the scraper then uses either youtubes api (or any other potential site we may add support for) to first find the playlist (in the case of youtube) and the actual video (youtube has a previous step where we get a playlist item which we can then filter based on title and then we can use the video id to get the video for views).
+## Future Ideas
 
+### Scraping 
+For every topic in each grade, we could have a script that loops through these topics, parses them and then give each topic + subtopic to the master scraper. The master scraper goes through the list of scrapers and runs them. Each scraper gets access to the youtube api, channel info (for youtube), chapter info, subtopic and the "scrape cache". The chapter info also contains the grade, subject and board information. 
 
-**TODO: Not yet done**
-Once we have gotten videos from each scraper, the master scraper then sorts the output based on views, creates a final output dictionary and returns that. We then turn that into a JSON for use in the site
+Using accept and reject keywords found in the chapter info, the scraper can then uses either youtubes api (or any other potential site we may add support for) to first find the playlist (in the case of youtube) and the actual video (youtube has a previous step where we get a playlist item which we can then filter based on title and then we can use the video id to get the video for views).
 
-### Other
-In addition to scraping, the script also loops through all the YAML files, fixes the output if there are any missing/blank fields. A 'keystone' folder is also created to house data that is **key** to the site but is **not** something that is part of the actual problem or solution (example being Table of Contents, team information, language information, information about boards, information about extra sources, some precompiled HTML etc)
+Once we have gotten videos from each scraper, the master scraper can then sorts the output based on views, creates a final output dictionary and returns that. We then turn that into a JSON for use in the site
 
 
 # Low Level Design
+
+## Resource
