@@ -6,8 +6,19 @@ import os
 import subprocess
 import random
 import threading
+from enum import IntEnum
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
+
+class Resource(IntEnum):
+    whiteboard = 0 # Magnet Brain etc.
+    animated = 1 # Ex. Monocha. Animated Videos
+    lab = 2 # Lab Video
+    interactive = 3 # Truly interative experiments like PHeT
+    class_note = 4 # Class Notes
+    revision_note = 5 # Revision Notes
+    take_a_test = 6 # Take a test
+
 
 class YamlLoadCache():
     def __init__(self):

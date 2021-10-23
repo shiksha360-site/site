@@ -1,9 +1,13 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import ForwardRef, List, Optional, Dict
-import uuid
+from typing import List, Optional, Dict
 from enum import IntEnum, Enum
 from sdk import common
+from sdk.common import Resource
+
+# For VSCode
+if True is False:
+    Resource.name # Just to make VSCode think resource is being accessed
 
 class Grade(IntEnum):
     grade6 = 6
