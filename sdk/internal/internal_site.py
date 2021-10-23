@@ -23,6 +23,7 @@ from typing import Dict, List
 from copy import deepcopy
 import orjson
 import uuid
+import functools
 
 key_data = common.load_yaml("data/core/internal_api.yaml")
 
@@ -77,9 +78,6 @@ app.add_middleware(
 )
 
 
-# Actual code begins here
-
-
 @router.put("/subjects")
 def add_or_edit_subject(
     subject_name_friendly: str = Query(
@@ -104,7 +102,7 @@ def add_or_edit_subject(
         None, 
         description="(Internal Tool Only) Alias for the subject for grade 10 and below. Example is science for biology/physics/chemistry. This is present due to current limitations in swagger. Leave blank to not alias. Only used in internal tool",
     ),
-    supported_grades: List[int] = Query(
+    supported_grades: List[Grade] = Query(
         ...,
         description="What grades this subject supports"
     )
@@ -116,7 +114,7 @@ def add_or_edit_subject(
         "desc": description,
         "image": image,
         "alias": alias,
-        "supported-grades": supported_grades
+        "supported-grades": [a.value for a in supported_grades]
     }
     common.dump_yaml("data/core/subjects.yaml", subjects)
     return api_success(reason="You will need to restart the webserver for the new subjects to be populated!")
