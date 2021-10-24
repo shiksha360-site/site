@@ -7,6 +7,8 @@ import subprocess
 import random
 import threading
 from enum import Enum, IntEnum
+import msgpack
+import pathlib
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
@@ -18,11 +20,14 @@ class Resource(IntEnum):
     class_note = 4 # Class Notes
     revision_note = 5 # Revision Notes
     mock_test = 6 # Take a test
+    real_world = 7 # Discovery (How's It Made/Mythbuster)
+    problem_solving = 8 # Problem Solving
 
 def get_resource_by_name(name: str) -> Resource:
     """Given the resource name, return the enum itself"""
     return getattr(Resource, name)
 
+# For Swagger
 ResourceList = Enum('ResourceList', {res.name: res.name.replace("_", " ").title() for res in list(Resource)})
 
 class YamlLoadCache():
@@ -85,8 +90,22 @@ def input_int(prompt: str, *, tries: int = 0, return_none: bool = False) -> int:
         print("Invalid input")
         return input_int(prompt, tries=tries+1)
 
-def write_min_json(d: dict, fp):
-    return fp.write(json.dumps(d, separators=(',', ':')))
+def write_min(d: dict, fp):
+    fn = pathlib.Path(fp.name)
+
+    # Lynx is the file for use in production
+    with fn.with_suffix(".lynx").open("wb") as fpb:
+        msgpack.pack(d, fpb)
+
+    # Snowfall is the debug file
+    with fn.with_suffix(".snowfall").open("w") as fpb:
+        json.dump(d, fpb, indent=4)
+
+
+def read_min(filename: str):
+    """Reads data accounting for any format changes"""
+    with open(str(filename).replace(".min.json", ".lynx"), "rb") as fpb:
+        return msgpack.unpack(fpb, strict_map_key=False)
 
 def remove_ws(s: str) -> str:
     return s.replace("\n", "").replace("  ", "")

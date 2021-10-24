@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import Any, List, Optional, Dict
 from enum import IntEnum, Enum
 from sdk import common
 from sdk.common import Resource
@@ -54,3 +54,6 @@ class ChapterData(BaseModel):
 
 class Chapter(APIResponse):
     chapters: List[ChapterData]
+
+class ResourceMetadata(BaseModel):
+    resource_metadata: Dict[str, Any] = {}

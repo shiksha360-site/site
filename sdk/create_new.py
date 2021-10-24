@@ -27,7 +27,7 @@ def create_new(grade: int, board: str, subject: str, name: str, iname: str):
         return "Grade not supported by subject", None
     
     if grade < 11:
-        subject = subject.get("alias", subject)
+        subject = subjects.get("alias", subject)
 
     # Actual creation
     subject_path = grade_path / board.lower() / subject.lower()
@@ -63,4 +63,4 @@ def create_new(grade: int, board: str, subject: str, name: str, iname: str):
     with (chapter_path / "info.yaml").open("w") as info:
         info.write(data)
 
-    return None, {"chapter": next_chapter, "id": id}
+    return None, {"chapter": next_chapter, "iname": iname}

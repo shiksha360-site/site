@@ -11,13 +11,19 @@ var subjectCache = {}
 // For now, we will offer language switching as well
 var lang = "en"
 
-htmlURL = "/data/keystone/html.min.json?d=1"
+htmlURL = "/data/keystone/html.lynx?d=1"
 
 console.log(serverHost)
 
+function parseLynx(r) {
+    // Parses lynx using messagepack and returns a promise
+    return MessagePack.decodeAsync(r.body)
+}
+
+
 function getToc() {
     fetch(htmlURL)
-    .then(r => r.json())
+    .then(r => parseLynx(r))
     .then(r => $("#toc").html(r.grades_list[lang]))
 }
 
@@ -43,9 +49,9 @@ function getBoard(grade, board) {
 
     html = ""
 
-    subjectListURL = `/data/grades/${grade}/${board}/subject_list.min.json`
+    subjectListURL = `/data/grades/${grade}/${board}/subject_list.lynx`
     fetch(subjectListURL)
-    .then(r => r.json())
+    .then(r => parseLynx(r))
     .then(r => {
         r.forEach(subject => {
             subject_dat = subjectCache[subject]
@@ -68,12 +74,12 @@ function getBoard(grade, board) {
 }
 
 function loadSubject(grade, board, subject) {
-    fetch(`/data/grades/${grade}/${board}/${subject}/chapter_list.min.json`)
-    .then()
+    fetch(`/data/grades/${grade}/${board}/${subject}/chapter_list.lynx`)
+    .then(r => parseLynx(r))
 }
 
 $(document).ready(() => {
-    fetch(`/data/keystone/subjects.min.json`)
-    .then(r => r.json())
+    fetch(`/data/keystone/subjects.lynx`)
+    .then(r => parseLynx(r))
     .then(r => subjectCache = r)
 })

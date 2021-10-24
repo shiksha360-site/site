@@ -1,6 +1,6 @@
 # Objective
 
-People right now have to look through Youtube and other sites to find good videos which are often wrong and not the best way to learn. Kalam Academy tries to fix this by:
+People right now have to look through Youtube and other sites to find good videos which are often wrong and not the best way to learn. Kalam Academy (now shiksha360) tries to fix this by:
 
 - Providing the best sources to learn from so students can just focus on learning
 - Create a study plan to set students up for success as per the CBSE etc. syllabus (showing the best interactive/whiteboard video, experiment, resources to explore more on a topic)

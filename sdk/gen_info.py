@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import pathlib
@@ -7,13 +6,15 @@ from typing import Dict, List, Set
 from copy import deepcopy
 from sdk import common
 from sdk.fetcher import scrape, scrape_cache_clear
+import asyncpg
+import orjson
 
 from sdk.fetcher.yt import Youtube
 
 if os.environ.get("HTTP_SCRAPE_MODE"):
     from sdk import video_crawler
 
-def gen_info(yt: Youtube):
+async def gen_info(db: asyncpg.Pool, yt: Youtube):
     os.chdir("data")
     if os.environ.get("HTTP_SCRAPE_MODE"):
         session = video_crawler.prepare()
@@ -39,17 +40,17 @@ def gen_info(yt: Youtube):
 
     boards_data = [board.lower() for board in boards_data]
 
-    with open("build/keystone/sources.min.json", "w") as sources_fp:
-        common.write_min_json(sources, sources_fp)
+    with open("build/keystone/sources.lynx", "wb") as sources_fp:
+        common.write_min(sources, sources_fp)
 
-    with open("build/keystone/subjects.min.json", "w") as subjects_fp:
-        common.write_min_json(subjects_data, subjects_fp)
+    with open("build/keystone/subjects.lynx", "wb") as subjects_fp:
+        common.write_min(subjects_data, subjects_fp)
 
-    with open("build/keystone/boards.min.json", "w") as boards_fp:
-        common.write_min_json(boards_data, boards_fp)
+    with open("build/keystone/boards.lynx", "wb") as boards_fp:
+        common.write_min(boards_data, boards_fp)
 
-    with open("build/keystone/langs.min.json", "w") as langs_fp:
-        common.write_min_json(langs, langs_fp)
+    with open("build/keystone/langs.lynx", "wb") as langs_fp:
+        common.write_min(langs, langs_fp)
 
     # Create grades
     grades: set = set()
@@ -125,19 +126,22 @@ def gen_info(yt: Youtube):
 
             # Parse all the topics
             for topic in chapter_info["topics"]:
-                chapter_info["topics"] = parse_topic(yt, chapter_info, topic)
+                chapter_info["topics"], resources = await parse_topic(db, yt, chapter_info, topic)
+
+                with (build_chapter_dir / f"resources-{topic}.lynx").open("w") as res_json:
+                    common.write_min(resources, res_json)
 
             # Write info
-            with (build_chapter_dir / "info.min.json").open("w") as chapter_info_json:
-                common.write_min_json(chapter_info, chapter_info_json)
+            with (build_chapter_dir / "info.lynx").open("w") as chapter_info_json:
+                common.write_min(chapter_info, chapter_info_json)
             
             scrape_cache_clear()
         
-        with open(os.path.join("build", "grades", str(grade), board, subject, "chapter_list.min.json"), "w") as chapter_listing_fp:
-            common.write_min_json(chapter_listing, chapter_listing_fp)
+        with open(os.path.join("build", "grades", str(grade), board, subject, "chapter_list.lynx"), "w") as chapter_listing_fp:
+            common.write_min(chapter_listing, chapter_listing_fp)
 
-        with open(os.path.join("build", "grades", str(grade), board, "subject_list.min.json"), "w") as subject_list_fp:  
-            common.write_min_json(list(subject_list[grade]), subject_list_fp)
+        with open(os.path.join("build", "grades", str(grade), board, "subject_list.lynx"), "w") as subject_list_fp:  
+            common.write_min(list(subject_list[grade]), subject_list_fp)
 
     grades: list = list(grades)
     grades.sort()
@@ -145,18 +149,18 @@ def gen_info(yt: Youtube):
     grade_boards = {k: list(v) for k, v in grade_boards.items()}
 
     # Add in grade info from recorded data
-    with open("build/keystone/grade_info.min.json", "w") as grades_file:
-        common.write_min_json({
+    with open("build/keystone/grade_info.lynx", "w") as grades_file:
+        common.write_min({
                 "grades": grades,
                 "grade_boards": grade_boards
         },
         grades_file)
 
-    # Create keystone.min.json using jinja2 and others
+    # Create keystone.lynx using jinja2 and others
     print("Compiling HTML")
-    with open("build/keystone/html.min.json", "w") as keystone:
+    with open("build/keystone/html.lynx", "w") as keystone:
         grades_list = env.get_template("grades_list.jinja2")
-        common.write_min_json({
+        common.write_min({
             "grades_list": {
                 "en": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="en")),
                 "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="hi"))
@@ -167,7 +171,7 @@ def gen_info(yt: Youtube):
         os.chdir("..")
 
 
-def parse_topic(yt: Youtube, chapter_info, topic):
+async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: str):
     # Fix and add proper reject stuff
     if chapter_info["topics"][topic].get("reject") is None:
         chapter_info["topics"][topic]["reject"] = []
@@ -180,10 +184,65 @@ def parse_topic(yt: Youtube, chapter_info, topic):
 
     if chapter_info["topics"][topic].get("name", "$name") == "$name":
         chapter_info["topics"][topic]["name"] = chapter_info["name"]
+    
+    async def resource_parse(topic, subtopic_parent):
+        def sort_by_view_count(d):
+            return d["view_count"]
+
+        sql = "SELECT resource_title, resource_type, resource_id, resource_author, resource_metadata, resource_description FROM topic_resources WHERE grade = $1 AND board = $2 AND subject = $3 AND chapter_iname = $4 AND topic_iname = $5"
+
+        args = [chapter_info["grade"], chapter_info["board"], chapter_info["subject"], chapter_info["iname"], topic]
+
+        if subtopic_parent:
+            sql += " AND subtopic_parent = $6"
+            args.append(subtopic_parent)
+        else:
+            sql += " AND NOT subtopic_parent <> ''"
+
+        sql += " AND disabled = false ORDER BY resource_metadata['view_count']"
+
+        resources = await db.fetch(sql, *args)
+        print(f"Parsing resource {resources} for topic {topic} and subtopic_parent {subtopic_parent}")
+
+        dat = []
+
+        taken_pos = {}
+        for i, res in enumerate(resources):
+            dat.append(dict(res))
+            dat[-1]["resource_id"] = str(dat[-1]["resource_id"])
+            dat[-1]["resource_metadata"] = orjson.loads(dat[-1]["resource_metadata"])
+
+            pos = dat[-1]["resource_metadata"].get("override_pos", i)
+
+            # 0, 1, 2, 3, 4, 5, 6, 7, 8 O-> 6, 9, 10
+
+            if pos in taken_pos.keys():
+                # Swap bad element and current element
+                bad_element = taken_pos[pos]
+                dat[bad_element]["pos"] = i
+                dat[i]["pos"] = bad_element
+                print(f"WARNING: Resource with ID {dat[-1]['resource_id']} has invalid pos {pos} that is taken ({taken_pos}). Swapping elements {bad_element} and element {i}")
+                pos = i
+            else:
+                dat[-1]["pos"] = pos
+
+            taken_pos[pos] = i
+
+                
+        dat = sorted(dat, key=lambda x: x["resource_metadata"].get("view_count", 0), reverse=True)
+        
+        return dat
+    
+    resources = {}
+
+    resources["_main"] = await resource_parse(topic, None)
+
+    for subtopic in deepcopy(chapter_info["topics"][topic]["subtopics"]):
+        resources[subtopic] = await resource_parse(subtopic, topic)
 
     if yt:
         os.chdir("..")
         scrape(yt, chapter_info, topic)
         os.chdir("data")
 
-    return chapter_info["topics"]
+    return chapter_info["topics"], resources

@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError, ValidationError, HTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from sdk.fetcher.yt.api import Youtube
-from .models import Chapter, Grade, Board, Subject, GitOP
+from .models import Chapter, Grade, Board, Subject, GitOP, ResourceMetadata
 import asyncpg
 from lynxfall.utils.fastapi import api_success, api_error
 from sdk.create_new import create_new
@@ -34,13 +34,16 @@ app = FastAPI(
     openapi_url="/openapi",
     docs_url=None, # We use custom swagger
     title=key_data["title"],
-    description=key_data["description"]
+    description=key_data["description"],
+    version="1.0",
 )
 
 @app.get("/", include_in_schema=False)
 @app.get("/internal", include_in_schema=False)
-async def custom_swagger_ui_html():
+async def custom_swagger_ui_html(beta: bool = False):
     """Internal Admin Tool"""
+    if beta:
+        return RedirectResponse("/swagger-ui/beta.html")
     return RedirectResponse("/swagger-ui/index.html")
 
 # Mount custom swagger
@@ -78,6 +81,7 @@ app.add_middleware(
 )
 
 
+# Actual endpoints
 @router.put("/subjects")
 def add_or_edit_subject(
     subject_name_friendly: str = Query(
@@ -119,6 +123,7 @@ def add_or_edit_subject(
     common.dump_yaml("data/core/subjects.yaml", subjects)
     return api_success(reason="You will need to restart the webserver for the new subjects to be populated!")
 
+    
 @router.post("/chapters")
 def new_chapter(
     grade: Grade, 
@@ -190,7 +195,7 @@ def get_chapters(grade: int = None, board: str = None, subject: str = None, chap
         if parse_full:
             # Parse all the topics
             for topic in data["topics"]:
-                data["topics"] = gen_info.parse_topic(None, data, topic)
+                data["topics"], _ = gen_info.parse_topic(None, data, topic)
 
         chapters.append(data)
 
@@ -323,11 +328,12 @@ def change_topic_position(
 
 
 @router.put("/topics/resources")
-async def new_resources(
+async def new_resource(
     grade: Grade, 
     board: Board, 
     subject: Subject,
     chapter: int,
+    resource_metadata: ResourceMetadata,
     topic_name_internal: str = Query(
         ...,
         description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
@@ -360,22 +366,22 @@ async def new_resources(
     )
 ):
     """Create a new video or edits an existing video"""
+    resource_metadata = resource_metadata.resource_metadata
     repaired = False
     info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     
-    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.min.json"
+    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.lynx"
 
     if not chapter_listing.exists():
         return api_error("You must perform atleast one data build before doing this")
 
-    with chapter_listing.open() as fp:
-        chapter_listing_json = orjson.loads(fp.read())
+    chapter_listing_json = common.read_min(chapter_listing)
     
     print(chapter_listing_json)
 
-    chapter_iname = chapter_listing_json[str(chapter)]["iname"]
+    chapter_iname = chapter_listing_json[chapter]["iname"]
 
     resource_type = common.get_resource_by_name(resource_type.name)
 
@@ -383,7 +389,6 @@ async def new_resources(
         sql = "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
     else:
         sql = "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent != $3 AND resource_url = $4",
-
 
     check = await app.state.db.fetch(
         "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
@@ -428,8 +433,11 @@ async def new_resources(
             resource_title = resource_title or video_item["snippet"]["title"]
             resource_author = resource_author or video_item["snippet"]["channelTitle"]
             res_meta["yt_video_url"] = video_id
-            res_meta["view_count"] = int(video_item["statistics"]["viewCount"])
-
+            if not resource_metadata.get("view_count"):
+                res_meta["view_count"] = int(video_item["statistics"]["viewCount"])
+    
+    res_meta |= resource_metadata
+    
     if not resource_author:
         return api_error("You must set resource_author")
     elif not resource_title:
@@ -452,14 +460,33 @@ async def new_resources(
         resource_url,
         resource_author,
         orjson.dumps(res_meta).decode("utf-8"),
-        id     
+        id
     )
 
     return api_success(repaired=repaired, id=str(id), force_200=True)
 
 
+@router.delete("/topics/resources")
+async def delete_resource(
+    resource_id: uuid.UUID = Query(
+        None,
+        description="The resource id to delete from (if you wish to use a resource id to delete a resource"
+    ),
+    resource_url: str = Query(
+        None,
+        description="Resource URL to delete based on"
+    )
+):
+    """Deletes a resource based on the resource id"""
+    if resource_id:
+        await app.state.db.execute("DELETE FROM topic_resources WHERE resource_id = $1", resource_id)
+    if resource_url:
+        await app.state.db.execute("DELETE FROM topic_resources WHERE resource_url = $1", resource_url)
+    return api_success()
+
+
 @router.post("/data/build")
-def build_data():
+async def build_data():
     """
     Warning: May hang the server
     
@@ -469,7 +496,7 @@ def build_data():
     out = StringIO()
     err = StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        gen_info.gen_info(yt)
+        await gen_info.gen_info(app.state.db, yt)
 
     out.seek(0)
     err.seek(0)
@@ -527,17 +554,16 @@ async def delete_chapter(
     if not chapter_dir.exists():
         return api_error("Chapter does not exist!", status_code=404)
 
-    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.min.json"
+    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.lynx"
 
     if not chapter_listing.exists():
         return api_error("You must perform atleast one data build before doing this")
 
-    with chapter_listing.open() as fp:
-        chapter_listing_json = orjson.loads(fp.read())
+    chapter_listing_json = common.read_min(chapter_listing)
     
     print(chapter_listing_json)
 
-    chapter_iname = chapter_listing_json[str(chapter)]["iname"]
+    chapter_iname = chapter_listing_json[chapter]["iname"]
 
     shutil.rmtree(str(chapter_dir))
     await app.state.db.execute(
