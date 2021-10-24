@@ -16,19 +16,25 @@ htmlURL = "/data/keystone/html.lynx?d=1"
 console.log(serverHost)
 
 function parseLynx(r) {
-    // Parses lynx using messagepack and returns a promise
-    return MessagePack.decodeAsync(r.body)
+    // Parses lynx using messagepack (or whatever new format lynx now uses) and returns a promise
+
+    // MessagePack
+    if(r.headers.get("Content-Type") == "lynx/msgpack") {
+        return MessagePack.decodeAsync(r.body)
+    }
 }
 
 
-function getToc() {
+function getTocFunc() {
     fetch(htmlURL)
     .then(r => parseLynx(r))
     .then(r => $("#toc").html(r.grades_list[lang]))
 }
 
 // Fetch the toc for the user before doing anything else
-getToc()
+if(window.getToc) {
+    getTocFunc()
+}
 // More functions below
 
 function getBoard(grade, board) {
@@ -59,7 +65,7 @@ function getBoard(grade, board) {
                 console.log("Still waiting for subject cache")
                 return
             }
-            html += `<li><a href='#' onclick='loadSubject(${grade},"${board}","${subject}")'>${subject_dat.name}</a><br/><span class='subject-desc'>${subject_dat.desc}</span></li>`
+            html += `<li><a href='/subject.html?grade=${grade}&board=${board}&subject=${subject}'>${subject_dat.name}</a><br/></li>`
         })    
         a = $("<ul>", {
             "class": "subject",
@@ -77,6 +83,19 @@ function loadSubject(grade, board, subject) {
     fetch(`/data/grades/${grade}/${board}/${subject}/chapter_list.lynx`)
     .then(r => parseLynx(r))
 }
+
+function showHideGrade(grade) {
+    div = $(`#grade${grade}-container`)
+    if(!div.attr("hidden")) {
+        div.fadeOut('fast')
+        div.attr("hidden", true)
+    } else {
+        div.fadeIn('fast')
+        div.attr("hidden", false)
+    }
+}
+
+
 
 $(document).ready(() => {
     fetch(`/data/keystone/subjects.lynx`)

@@ -49,13 +49,12 @@ class Youtube():
         """Attempt to fetch request from cache"""
         Path(f"tmpstor").mkdir(exist_ok=True)
         f = f"tmpstor/cache-{t}-{id}"
-        fpath = Path(f"{f}.min.json")        
+        fpath = Path(f"{f}.lynx")        
         if self.etag_cache.get(f):
             cache_data = self.cache[self.etag_cache[f]]
         
         elif fpath.exists():
-            with fpath.open() as fp:
-                cache_data = orjson.loads(fp.read())
+            cache_data = common.read_min(fpath)
         
         else:
             return None
@@ -71,9 +70,9 @@ class Youtube():
         data.append({"time": str(time.time()), "internal": True})
         Path(f"tmpstor").mkdir(exist_ok=True)
         f = f"tmpstor/cache-{t}-{id}"
-        fpath = Path(f"{f}.min.json")  
+        fpath = Path(f"{f}.lynx")  
         with fpath.open("w") as fp:
-            common.write_min_json(data, fp)
+            common.write_min(data, fp)
         self._cache_etag(f, data[0]["etag"], data)
 
     def _cache_etag(self, id: str, etag: str, data: dict):

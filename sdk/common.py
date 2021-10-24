@@ -108,7 +108,7 @@ def read_min(filename: str):
         return msgpack.unpack(fpb, strict_map_key=False)
 
 def remove_ws(s: str) -> str:
-    return s.replace("\n", "").replace("  ", "")
+    return s.replace("\n", "").replace("  ", "").replace("\t", " ")
 
 def fix_versions(s: str):
     new_version = random.randint(1, 9)
