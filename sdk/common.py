@@ -90,16 +90,17 @@ def input_int(prompt: str, *, tries: int = 0, return_none: bool = False) -> int:
         print("Invalid input")
         return input_int(prompt, tries=tries+1)
 
-def write_min(d: dict, fp):
+def write_min(d: dict, fp, no_debug: bool = False):
     fn = pathlib.Path(fp.name)
 
     # Lynx is the file for use in production
     with fn.with_suffix(".lynx").open("wb") as fpb:
         msgpack.pack(d, fpb)
 
-    # Snowfall is the debug file
-    with fn.with_suffix(".snowfall").open("w") as fpb:
-        json.dump(d, fpb, indent=4)
+    if not no_debug:
+        # Snowfall is the debug file
+        with fn.with_suffix(".snowfall").open("w") as fpb:
+            json.dump(d, fpb, indent=4)
 
 
 def read_min(filename: str):

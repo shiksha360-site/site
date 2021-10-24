@@ -72,7 +72,7 @@ class Youtube():
         f = f"tmpstor/cache-{t}-{id}"
         fpath = Path(f"{f}.lynx")  
         with fpath.open("w") as fp:
-            common.write_min(data, fp)
+            common.write_min(data, fp, no_debug=True)
         self._cache_etag(f, data[0]["etag"], data)
 
     def _cache_etag(self, id: str, etag: str, data: dict):
