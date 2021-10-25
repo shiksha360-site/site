@@ -46,7 +46,7 @@ function fetchSubjectHTML(grade, board) {
                                 console.log(key)
                                 console.log(value)
                                 topicList += `
-                                <strong>${value.name}</strong>
+                                <a style="height: 60px !important; font-size: 20px; display: inline-block; width: 100%; text-align: left !important;" href="/chapter.html?grade=${grade}&board=${board}&subject=${subject}&chapter=${key}" class="card-link btn-lg">${value.name}</a>
                                 `
                             })
                             body.html(topicList)
