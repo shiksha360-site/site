@@ -105,7 +105,7 @@ def add_or_edit_subject(
     ),
     alias: str = Query(
         None, 
-        description="(Internal Tool Only) Alias for the subject for grade 10 and below. Example is science for biology/physics/chemistry. This is present due to current limitations in swagger. Leave blank to not alias. Only used in internal tool",
+        description="(Internal Tool Only) Alias for the subject for grade 9 and below. Example is science for biology/physics/chemistry. This is present due to current limitations in swagger. Leave blank to not alias. Only used in internal tool",
     ),
     supported_grades: List[Grade] = Query(
         ...,

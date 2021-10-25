@@ -26,8 +26,9 @@ def create_new(grade: int, board: str, subject: str, name: str, iname: str):
     if grade not in subjects.get("supported-grades", [grade]):
         return "Grade not supported by subject", None
     
-    if grade < 11:
-        subject = subjects.get("alias", subject)
+    if grade < 9:
+        print(subjects)
+        subject = subjects[subject].get("alias", subject)
 
     # Actual creation
     subject_path = grade_path / board.lower() / subject.lower()

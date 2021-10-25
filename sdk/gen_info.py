@@ -158,18 +158,38 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
 
     # Create keystone.lynx using jinja2 and others
     print("Compiling HTML")
-    with open("build/keystone/html.lynx", "w") as keystone:
-        grades_list = env.get_template("grades_list.jinja2")
+    grades_list = env.get_template("grades_list.jinja2")
+    subject_base_accordian = env.get_template("subject_base_accordian.jinja2")
+    with open("build/keystone/html-grades_list.lynx", "w") as keystone:
         common.write_min({
-            "grades_list": {
-                "en": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="en")),
-                "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, lang="hi"))
-            }
-        }, keystone)
-    
+            "en": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, boards=boards_data, lang="en")),
+            "hi": common.remove_ws(grades_list.render(grades=grades, grade_boards=grade_boards, boards=boards_data, lang="hi"))
+        }, keystone, no_debug=True)
+    for grade in grades:
+        per_grade_subjects = get_per_grade_subjects(grade, subjects_data)
+        with open(f"build/grades/{grade}/html-subject_base_accordian.lynx", "w") as keystone:
+            common.write_min({
+                "en": common.remove_ws(subject_base_accordian.render(subjects=per_grade_subjects, grade=grade, lang="en")),
+                "hi": common.remove_ws(subject_base_accordian.render(subjects=per_grade_subjects, grade=grade, lang="hi")),
+            }, keystone, no_debug=True)
+
     if os.getcwd().endswith("data"):
         os.chdir("..")
 
+def get_per_grade_subjects(grade: int, subjects_data: dict):
+    subjects = {}
+    for subject, data in subjects_data.items():
+        if grade < 9:
+            _subject = data.get("alias", subject) or subject
+        else:
+            _subject = subject
+        print(_subject, list(subjects.keys()))
+        if _subject in subjects.keys():
+            continue
+        if grade not in data.get("supported-grades", [grade]):
+            continue
+        subjects[_subject] = subjects_data[_subject]
+    return subjects
 
 async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: str):
     # Fix and add proper reject stuff

@@ -1,0 +1,16 @@
+{% extends "_base.jinja2" %}
+
+{% block head %}
+<script src="prod/learn.min.js?v=32134939"></script>
+<script defer>
+  $(document).ready(learnPane)
+</script>
+{% endblock %}
+
+{% block title%}
+  <title>Subject</title>
+{% endblock %}
+
+{% block content %}
+  {{ super() }}
+{% endblock %}
