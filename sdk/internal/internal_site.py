@@ -56,6 +56,7 @@ router = APIRouter(
 @app.on_event("startup")
 async def on_startup():
     app.state.db = await asyncpg.create_pool()
+    app.state.yt = Youtube()
     app.state.ipc_up = True # We use lots of code from Fates List, so we need to set these to True
     app.state.first_run = True
     app.state.gunicorn = False
@@ -167,7 +168,7 @@ def edit_chapter_props(
     return api_success()
 
 @router.get("/chapters", response_model=Chapter)
-def get_chapters(grade: int = None, board: str = None, subject: str = None, chapter: int = None, parse_full: bool = False):
+def get_chapters(grade: int = None, board: str = None, subject: str = None, chapter: int = None):
     chapters = []
     for path in Path("data/grades").rglob("*/*/*"):
         if not path.name.endswith("info.yaml"):
@@ -181,21 +182,17 @@ def get_chapters(grade: int = None, board: str = None, subject: str = None, chap
             continue
         elif chapter and _chapter != chapter:
             continue
-        data = common.load_yaml(path, ruamel_type="rt")
+        
+        try:
+            data = common.read_min(str(path).replace("grades", "build/grades", 1).replace("info.yaml", "info.lynx"))
+        except FileNotFoundError:
+            return api_error("You must perform atleast one data build before doing this")
 
-        data["subject"] = _subject
-        data["grade"] = _grade
-        data["board"] = _board
         try:
             data["study_time"] = data["study-time"]
             del data["study-time"]
         except Exception:
             pass
-
-        if parse_full:
-            # Parse all the topics
-            for topic in data["topics"]:
-                data["topics"], _ = gen_info.parse_topic(None, data, topic)
 
         chapters.append(data)
 
@@ -427,8 +424,7 @@ async def new_resource(
     
     if "youtube.com" in resource_url and "?v=" in resource_url:
         video_id = resource_url.split("?v=")[1].split("&")[0] # Extract video id
-        yt = Youtube()
-        video = yt.get_video(video_id)
+        video = app.state.yt.get_video(video_id)
         for video_item in video.loop():
             resource_title = resource_title or video_item["snippet"]["title"]
             resource_author = resource_author or video_item["snippet"]["channelTitle"]
@@ -492,11 +488,10 @@ async def build_data():
     
     This will build the data needed for the client to run
     """
-    yt = Youtube()
     out = StringIO()
     err = StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        await gen_info.gen_info(app.state.db, yt)
+        await gen_info.gen_info(app.state.db, app.state.yt)
 
     out.seek(0)
     err.seek(0)

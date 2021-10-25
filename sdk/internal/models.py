@@ -39,7 +39,7 @@ class Topic(BaseModel):
     name: Optional[str] = "$name"
     accept: Optional[List[str]] = []
     reject: Optional[List[str]] = []
-    subtopics: Optional[Topic] = None
+    subtopics: Optional[Dict[str, Topic]] = {}
 
 Topic.update_forward_refs()
 

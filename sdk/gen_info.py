@@ -241,8 +241,11 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         resources[subtopic] = await resource_parse(subtopic, topic)
 
     if yt:
-        os.chdir("..")
+        # Do it twice to traverse data and data/data
+        if os.getcwd().endswith("data"):
+            os.chdir("..")
         scrape(yt, chapter_info, topic)
-        os.chdir("data")
+        if not os.getcwd().endswith("data"):
+            os.chdir("data")
 
     return chapter_info["topics"], resources
