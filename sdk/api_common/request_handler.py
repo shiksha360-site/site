@@ -47,7 +47,7 @@ class KalanRequestHandler(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         """Run _dispatch, if that fails, log error and do exc handler"""
         # Ensure we are always in cwd
-        if os.getcwd() != self.cwd:
+        if os.getcwd() != self.cwd and not request.query_params.get("internal_http_call", False):
             os.chdir(self.cwd)
 
         request.state.error_id = str(uuid.uuid4())

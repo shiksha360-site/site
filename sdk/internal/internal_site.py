@@ -19,7 +19,7 @@ from pathlib import Path
 import os
 import contextlib
 from io import StringIO
-from typing import Dict, List
+from typing import List, Optional
 from copy import deepcopy
 import orjson
 import uuid
@@ -329,6 +329,11 @@ def change_topic_position(
     return api_success()
 
 
+@router.get("/topics/resources")
+async def get_resources():
+    return await app.state.db.fetch("SELECT * FROM topic_resources")
+
+
 @router.put("/topics/resources")
 async def new_resource(
     grade: Grade, 
@@ -469,6 +474,7 @@ async def new_resource(
 
 @router.delete("/topics/resources")
 async def delete_resource(
+    subject: Optional[Subject] = None,
     resource_id: uuid.UUID = Query(
         None,
         description="The resource id to delete from (if you wish to use a resource id to delete a resource"
@@ -479,11 +485,18 @@ async def delete_resource(
     )
 ):
     """Deletes a resource based on the resource id"""
+    rcl = []
     if resource_id:
-        await app.state.db.execute("DELETE FROM topic_resources WHERE resource_id = $1", resource_id)
+        rc = await app.state.db.execute("DELETE FROM topic_resources WHERE resource_id = $1", resource_id)
+        rcl.append(rc)
     if resource_url:
-        await app.state.db.execute("DELETE FROM topic_resources WHERE resource_url = $1", resource_url)
-    return api_success()
+        rc = await app.state.db.execute("DELETE FROM topic_resources WHERE resource_url = $1", resource_url)
+        rcl.append(rc)
+    if subject:
+        rc = await app.state.db.execute("DELETE FROM topic_resources WHERE subject = $1", subject.value.lower())
+        rcl.append(rc)
+
+    return api_success(rc=rcl)
 
 
 @router.post("/data/build")

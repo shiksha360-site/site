@@ -8,6 +8,7 @@ from sdk import common
 from sdk.fetcher import scrape, scrape_cache_clear
 import asyncpg
 import orjson
+import aiohttp
 
 from sdk.fetcher.yt import Youtube
 
@@ -160,6 +161,13 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
         },
         grades_file)
     
+    # Add in raw resource data for debug purposes
+    async with aiohttp.ClientSession() as sess:
+        async with sess.get("http://127.0.0.1:8000/topics/resources?internal_http_call=true") as res:
+            resources = await res.json()
+    with open("build/keystone/resources.lynx", "wb") as resources_fp:
+        common.write_min(resources, resources_fp, no_debug=True)
+
     # Compile the HTML
     print("Compiling HTML")
     grades_list = env.get_template("grades_list.jinja2")

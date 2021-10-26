@@ -36,9 +36,16 @@
     <script src="/swagger-ui/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
     <script>
     window.onload = function() {
+      if(window.location.protocol == "file:") {
+        var serverHost = "http://localhost:8000"
+      }
+      else {
+        var serverHost = window.location.protocol + "//" + window.location.host
+      }
+
       // Begin Swagger UI call region
       const ui = SwaggerUIBundle({
-        url: "http://127.0.0.1:8000/openapi",
+        url: serverHost + "/openapi",
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [

@@ -6,4 +6,4 @@ import uvicorn
 
 
 if __name__ == "__main__":
-    uvicorn.run(internal.internal_site.app)
+    uvicorn.run(internal.internal_site.app, host="0.0.0.0")
