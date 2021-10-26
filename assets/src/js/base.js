@@ -30,4 +30,10 @@ function getToc() {
     fetch("/data/keystone/html-grades_list.lynx?d=1")
     .then(r => parseLynx(r))
     .then(r => $("#toc").html(r[lang]))
+
+    fetch("/data/keystone/index.lynx")
+    .then(r => parseLynx(r))
+    .then(r => {
+        $("#our-vision-text").html(r.ourvision)
+    })
 }

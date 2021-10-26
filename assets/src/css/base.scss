@@ -22,8 +22,10 @@ $title-padding: 3px;
         display: block;
     }
 
+    // Unused right now
+
     .ic-content {
-        margin-left: 12%;
+        padding: 3px;
     }
 }
 
@@ -60,9 +62,13 @@ $title-padding: 3px;
     height: 100%;
 }
 
-.our-vision {
+#our-vision {
     background-color:#c3c7c4;
     width: 100%;
     min-height: 50vh;
     padding: 5px;
+}
+
+#our-vision-header {
+    font-family: "Times New Roman", Times, serif;
 }

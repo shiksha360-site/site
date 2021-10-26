@@ -271,7 +271,12 @@ def add_or_edit_topic(
             data["topics"][subtopic_parent]["subtopics"][topic_name_internal] = ext
     
     common.dump_yaml(info_yaml, data)
-    return api_success(count=len(data["topics"].values()), mc_analyze=len(data["topics"].get("main", {}).get("subtopics", {}).values()), force_200=True)
+
+    try:
+        mc_analyze = len(data["topics"].get("main", {}).get("subtopics", {}).values())
+    except:
+        mc_analyze = 0
+    return api_success(count=len(data["topics"].values()), mc_analyze=mc_analyze, force_200=True)
 
 @router.patch("/topics/position")
 def change_topic_position(

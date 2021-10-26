@@ -259,10 +259,14 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
     
     resources = {}
 
-    resources["_main"] = await resource_parse(topic, None)
+    dat = await resource_parse(topic, None)
 
     for subtopic in deepcopy(chapter_info["topics"][topic]["subtopics"]):
         resources[subtopic] = await resource_parse(subtopic, topic)
+
+    if not resources.get("main"):
+        resources["main"] = []
+    resources["main"] += dat
 
     if yt:
         # Do it twice to traverse data and data/data
