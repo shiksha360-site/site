@@ -37,6 +37,7 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
     langs = common.load_yaml("core/langs.yaml")
     sources = common.load_yaml("core/sources.yaml")
     subjects_data = common.load_yaml("core/subjects.yaml")
+    index = common.load_yaml("core/index.yaml")
 
     boards_data = [board.lower() for board in boards_data]
 
@@ -51,6 +52,9 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
 
     with open("build/keystone/langs.lynx", "wb") as langs_fp:
         common.write_min(langs, langs_fp)
+    
+    with open("build/keystone/index.lynx", "wb") as index_fp:
+        common.write_min(index, index_fp)
 
     # Create grades
     grades: set = set()
@@ -155,8 +159,8 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
                 "grade_boards": grade_boards
         },
         grades_file)
-
-    # Create keystone.lynx using jinja2 and others
+    
+    # Compile the HTML
     print("Compiling HTML")
     grades_list = env.get_template("grades_list.jinja2")
     subject_base_accordian = env.get_template("subject_base_accordian.jinja2")
