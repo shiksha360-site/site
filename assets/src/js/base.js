@@ -31,5 +31,3 @@ function getToc() {
     .then(r => parseLynx(r))
     .then(r => $("#toc").html(r[lang]))
 }
-    
-// More functions below

@@ -5,8 +5,26 @@ $title-padding: 3px;
 }
 
 #toc {
-    width: 40%;
+    width: 100%;
     margin: 0 auto;
+}
+
+.nomobile {
+    display: none;
+}
+
+@media (min-width: 600px) {
+    #toc {
+        width: 50%;
+    }
+
+    .nomobile {
+        display: block;
+    }
+
+    .ic-content {
+        margin-left: 12%;
+    }
 }
 
 .subject-desc {
@@ -25,4 +43,26 @@ $title-padding: 3px;
 
 .card, .card-header {
     border-radius: 5px 5px 5px 5px !important;
+}
+
+.card, .card-header, .card-body {
+    word-wrap: break-word;
+}
+
+.center {
+    margin-left: auto;
+    margin-right: auto;
+} 
+
+.index-container {
+    margin-top: 20px;
+    width: 100%;
+    height: 100%;
+}
+
+.our-vision {
+    background-color:#c3c7c4;
+    width: 100%;
+    min-height: 50vh;
+    padding: 5px;
 }

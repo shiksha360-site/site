@@ -6,10 +6,22 @@
 </script>
 {% endblock %}
 
-{% block title%}
+{% block title %}
   <title>Shiksha360</title>
 {% endblock %}
 
-{% block content %}
+{% block header %}
   {{ super() }}
+{% endblock %}
+
+{% block content %}
+  <img src="webp/ourvision.webp" class="nomobile center" width="300px" />
+  {{ super() }}
+  <div class="index-container">
+    <div class="our-vision">
+      <div class="ic-content">
+        <h3><strong>Our Vision</strong></h3>
+      </div>
+    </div>
+  </div>
 {% endblock %}
