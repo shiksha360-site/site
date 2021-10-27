@@ -51,8 +51,10 @@ def create_new(grade: int, board: str, subject: str, name: str, iname: str):
     # Basic setup of jinja2
     env = Environment(
         loader=FileSystemLoader("data/templates/yaml"),
-        autoescape=select_autoescape()
+        autoescape=select_autoescape(),
     )
+    env.globals = {"uuid_gen": lambda: str(uuid.uuid4())}
+
 
     info = env.get_template("chapter_info.yaml")
 

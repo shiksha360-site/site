@@ -1,6 +1,7 @@
 import os
 import shutil
 import pathlib
+import uuid
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from typing import Dict, List, Set
 from copy import deepcopy
@@ -25,9 +26,10 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
     # Basic setup
     env = Environment(
         loader=FileSystemLoader("templates/jinja2"),
-        autoescape=select_autoescape()
+        autoescape=select_autoescape(),
     )
 
+    env.globals = {"uuid_gen": lambda: str(uuid.uuid4())}
     env.trim_blocks = True
     env.lstrip_blocks = True
 

@@ -8,13 +8,15 @@ import shutil
 from typing import Any, Dict
 from sdk import common
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import uuid
 
 def staticfiles_compile():
     """Compiles all labelled static files"""
     env = Environment(
         loader=FileSystemLoader("assets/src/templates"),
-        autoescape=select_autoescape()
+        autoescape=select_autoescape(),
     )
+    env.globals = {"uuid_gen": lambda: str(uuid.uuid4())}
 
     for src_file in Path("assets/src").rglob("*.js"):
         common.fix_versions(str(src_file))

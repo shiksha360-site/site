@@ -168,7 +168,8 @@ async def bulk_add_chapters(
     modifier: str = Query(
         None,
         description="Modifier for bulk add. In format key=value,key2=value2"
-    )
+    ),
+    pretend: Optional[bool] = True
 ):
     """
     Format is similar to how embibe structures grade 6 so as to allow easier adding of syllabus:
@@ -207,7 +208,8 @@ async def bulk_add_chapters(
 
         ret += f"{subject} {name} {iname}\n"
         print(subject)
-        new_chapter(grade, board, Subject(subject), name, iname)
+        if not pretend:
+            new_chapter(grade, board, Subject(subject), name, iname)
     return HTMLResponse(ret)
 
 @router.patch("/chapter/props")
