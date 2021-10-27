@@ -198,7 +198,8 @@ def get_per_grade_subjects(grade: int, subjects_data: dict):
         print(_subject, list(subjects.keys()))
         if _subject in subjects.keys():
             continue
-        if grade not in data.get("supported-grades", [grade]):
+        supported_grades = data.get("supported-grades", [grade])
+        if not supported_grades or grade not in supported_grades:
             continue
         subjects[_subject] = subjects_data[_subject]
     return subjects

@@ -1,10 +1,12 @@
 import shutil
-from fastapi import FastAPI, APIRouter, Query, Body
+from fastapi import FastAPI, APIRouter, Query, Body, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi_restful.openapi import simplify_operation_ids
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.exceptions import RequestValidationError, ValidationError, HTTPException
+from pydantic.main import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import Request
 from sdk.fetcher.yt.api import Youtube
 from .models import Chapter, Grade, Board, Subject, GitOP, ResourceMetadata
 import asyncpg
@@ -23,7 +25,7 @@ from typing import List, Optional
 from copy import deepcopy
 import orjson
 import uuid
-import functools
+import re
 
 key_data = common.load_yaml("data/core/internal_api.yaml")
 
@@ -133,7 +135,7 @@ def new_chapter(
     name: str = Query(..., description="Name of the chapter"),
     iname: str = Query(
         ..., 
-        description="Internal chapter name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible\n\n**Do not reuse the same internal name more than once**",
+        description="Internal chapter name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible\n\n**Do not reuse the same internal name more than once in the same grade**",
         minlength=2,
         regex=nsc_regex
     )
@@ -146,6 +148,68 @@ def new_chapter(
         return api_error(rc)
     return api_success(ctx=ctx)
 
+@router.post(
+    "/chapters/bulk",
+    openapi_extra={
+        "requestBody": {
+            "required": True, 
+            "content": {
+                "text/plain": {
+                    "schema": {"type": "string"}
+                }
+            }
+        }
+    }
+)
+async def bulk_add_chapters(
+    request: Request,
+    grade: Grade, 
+    board: Board, 
+    modifier: str = Query(
+        None,
+        description="Modifier for bulk add. In format key=value,key2=value2"
+    )
+):
+    """
+    Format is similar to how embibe structures grade 6 so as to allow easier adding of syllabus:
+
+    Chapter XYZ       SUBJECT / Separation of Substances|Internal Name >    
+    """
+    def get_line(s, sep: str = "/"):
+        return s.split(sep)[1].replace("Click Here", ">").split(">")[0].strip()
+
+    if modifier:
+        modifiers = {k.strip(): v.strip() for k, v in [m.split("=") for m in modifier.split(",")]}
+    else:
+        modifiers = {}
+
+    if modifiers.get("sep"):
+        sep = modifiers["sep"]
+    else:
+        sep = "/"
+
+    data = await request.body()
+    data = data.decode("utf-8")
+    ret = ""
+    for line in data.split("\n"):
+        if modifiers.get("subject"):
+            line = get_line(line, sep)
+            subject = modifiers["subject"].lower().title()
+        else:
+            try:
+                subject, line = line.split(sep)[0].strip().split(" ")[-1].lower().title(), get_line(line, sep)
+            except IndexError:
+                return api_error("Invalid data provided")
+        if "|" in line:
+            name, iname = line.split("|")
+        else:
+            name, iname = line, re.sub(r'\b[a-z]+\s*', "", line).strip().replace(" ", "-").replace(",", "").replace(":", "").lower()
+
+        ret += f"{subject} {name} {iname}\n"
+        print(subject)
+        new_chapter(grade, board, Subject(subject), name, iname)
+    return HTMLResponse(ret)
+
 @router.patch("/chapter/props")
 def edit_chapter_props(
     grade: Grade, 
@@ -156,7 +220,9 @@ def edit_chapter_props(
     study_time: int = Query(None, description="Study time of the chapter")
 ):
     """Edits the chapter properties (currently only name and study time)"""
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
+    subject = common.get_subject_name(grade, subject)
+
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -174,13 +240,13 @@ def get_chapters(grade: int = None, board: str = None, subject: str = None, chap
         if not path.name.endswith("info.yaml"):
             continue
         _, _, _grade, _board, _subject, _chapter, _ = path.parts
-        if grade and grade != _grade:
+        if grade and str(grade) != _grade:
             continue
-        elif board and _board != board:
+        elif board and board != _board:
             continue
-        elif subject and _subject != board:
+        elif subject and subject != _subject:
             continue
-        elif chapter and _chapter != chapter:
+        elif chapter and str(chapter) != _chapter:
             continue
         
         try:
@@ -238,7 +304,9 @@ def add_or_edit_topic(
 
     **NOTE** This does not handle adding videos to a topic. Use /topics/videos for that
     """
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
+    subject = common.get_subject_name(grade, subject)
+
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -299,7 +367,9 @@ def change_topic_position(
         description="Put the parent topic's internal topic name (topic_name_internal) if you wish to make a subtopic of a topic"
     ),
 ):
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
+    subject = common.get_subject_name(grade, subject)
+
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     data = common.load_yaml(info_yaml, ruamel_type="rt")
@@ -373,13 +443,15 @@ async def new_resource(
     )
 ):
     """Create a new video or edits an existing video"""
+    subject = common.get_subject_name(grade, subject)
+
     resource_metadata = resource_metadata.resource_metadata
     repaired = False
-    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter) / "info.yaml"
+    info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject / str(chapter) / "info.yaml"
     if not info_yaml.exists():
         return api_error("Chapter does not exist!", status_code=404)
     
-    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.lynx"
+    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject / "chapter_list.lynx"
 
     if not chapter_listing.exists():
         return api_error("You must perform atleast one data build before doing this")
@@ -392,17 +464,18 @@ async def new_resource(
 
     resource_type = common.get_resource_by_name(resource_type.name)
 
-    if subtopic_parent:
-        sql = "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
-    else:
-        sql = "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent != $3 AND resource_url = $4",
+    grade = int(grade.value)
+    board = board.value.lower()
 
     check = await app.state.db.fetch(
-        "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+        "SELECT resource_id AS id, resource_metadata FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4 AND grade = $5 AND board = $6 AND subject = $7",
         chapter_iname,
         topic_name_internal,
         subtopic_parent,
-        resource_url
+        resource_url,
+        grade,
+        board,
+        subject
     )
     print(check)
     if check and len(check) > 1:
@@ -410,22 +483,28 @@ async def new_resource(
         repaired = True
         id = check[0]["id"] # Remove all but first resource
         await app.state.db.execute(
-            "DELETE FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+            "DELETE FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4 AND grade = $5 AND board = $6 AND subject = $7",
             chapter_iname,
             topic_name_internal,
             subtopic_parent,
-            resource_url
+            resource_url,
+            grade,
+            board,
+            subject
         )
         res_meta = orjson.loads(check[0]["resource_metadata"])
     elif check and len(check) == 1:
         # Delete old preserving metadata
         id = check[0]["id"]
         await app.state.db.execute(
-            "DELETE FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4",
+            "DELETE FROM topic_resources WHERE chapter_iname = $1 AND topic_iname = $2 AND subtopic_parent = $3 AND resource_url = $4 AND grade = $5 AND board = $6 AND subject = $7",
             chapter_iname,
             topic_name_internal,
             subtopic_parent,
-            resource_url
+            resource_url,
+            grade,
+            board,
+            subject
         )
         res_meta = orjson.loads(check[0]["resource_metadata"])
     else:
@@ -453,9 +532,9 @@ async def new_resource(
         """INSERT INTO topic_resources (grade, board, subject, chapter_num, chapter_iname, topic_iname, subtopic_parent,
         resource_type, resource_title, resource_description, resource_url, resource_author, resource_metadata, resource_id) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING resource_id""",
-        int(grade.value),
-        board.value.lower(),
-        subject.value.lower(),
+        grade,
+        board,
+        subject,
         chapter,
         chapter_iname,
         topic_name_internal,
@@ -563,11 +642,13 @@ async def delete_chapter(
     subject: Subject,
     chapter: int,  
 ):
-    chapter_dir = Path("data/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / str(chapter)
+    subject = common.get_subject_name(grade, subject)
+
+    chapter_dir = Path("data/grades") / str(grade.value) / board.value.lower() / subject / str(chapter)
     if not chapter_dir.exists():
         return api_error("Chapter does not exist!", status_code=404)
 
-    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject.value.lower() / "chapter_list.lynx"
+    chapter_listing = Path("data/build/grades") / str(grade.value) / board.value.lower() / subject / "chapter_list.lynx"
 
     if not chapter_listing.exists():
         return api_error("You must perform atleast one data build before doing this")

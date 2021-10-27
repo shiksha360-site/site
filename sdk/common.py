@@ -27,6 +27,16 @@ def get_resource_by_name(name: str) -> Resource:
     """Given the resource name, return the enum itself"""
     return getattr(Resource, name)
 
+def get_subject_name(grade, subject):
+    try:
+        subject = subject.value.lower()
+    except Exception:
+        subject = subject.lower()
+    subjects = load_yaml("data/core/subjects.yaml")
+    if grade < 9:
+        subject = subjects[subject].get("alias", subject)
+    return subject
+
 # For Swagger
 ResourceList = Enum('ResourceList', {res.name: res.name.replace("_", " ").title() for res in list(Resource)})
 
