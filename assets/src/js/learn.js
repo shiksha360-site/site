@@ -1,23 +1,3 @@
-function waitForElm(selector) {
-    return new Promise(resolve => {
-        if (document.querySelector(selector)) {
-            return resolve(document.querySelector(selector));
-        }
-
-        const observer = new MutationObserver(mutations => {
-            if (document.querySelector(selector)) {
-                resolve(document.querySelector(selector));
-                observer.disconnect();
-            }
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    });
-}
-
 function fetchSubjectHTML(grade, board) {
     fetch(`/data/grades/${grade}/html-subject_base_accordian.lynx?d=1`)
     .then(r => parseLynx(r))
@@ -60,6 +40,7 @@ function fetchSubjectHTML(grade, board) {
             $(".top-subject").collapse("show")
         })
     })
+    .catch(() => $("#toc").html("Something went wrong... Check your URL?"))
 }
 
 function learnPane() {

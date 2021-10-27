@@ -5,6 +5,8 @@ else {
     var serverHost = window.location.protocol + "//" + window.location.host
 }
 
+const isProd = false // Whether the site is in production mode or not
+
 // Subject Cache
 var subjectCache = {}
 
@@ -13,6 +15,8 @@ var lang = localStorage.getItem("lang")
 if(!lang) {
     lang = "en"
 }
+
+window.lang = lang
 
 console.log(serverHost)
 
@@ -36,4 +40,52 @@ function getToc() {
     .then(r => {
         $("#our-vision-text").html(r.ourvision)
     })
+}
+
+function waitForElm(selector) {
+    return new Promise(resolve => {
+        if (document.querySelector(selector)) {
+            return resolve(document.querySelector(selector));
+        }
+
+        const observer = new MutationObserver(mutations => {
+            if (document.querySelector(selector)) {
+                resolve(document.querySelector(selector));
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
+
+// Accordian stuff
+
+baseAccordian = (id) => `
+    <div class="accordion" id="${id}">
+    </div>
+`
+
+function addCard(id, prefix, title) {
+    baseHTML = `
+    <div class="card" id="${prefix}-card">
+        <div class="card-header" data-toggle="collapse" aria-controls="${prefix}-collapse-card" data-target="#${prefix}-collapse-card" id="${prefix}-card-div">
+            <h4 id="${prefix}-header" class="mb-0">
+                ${title}
+            </h4>
+        </div>
+        <div id="${prefix}-collapse-card" class="collapse" aria-labelledby="${prefix}-card-div" data-parent="#${id}">
+            <div class="card-body">
+                <p class="text-center" style="font-size: 18px" id="${prefix}-body-para"></p>
+                <div id="${prefix}-body">
+                </div>
+            </div>
+        </div>
+    </div>
+    `
+    $(`#${id}`).append(baseHTML)
 }

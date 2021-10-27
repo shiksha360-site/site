@@ -58,6 +58,9 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
     
     with open("build/keystone/index.lynx", "wb") as index_fp:
         common.write_min(index, index_fp)
+    
+    with open("build/keystone/resource_types.lynx", "wb") as enums_fp:
+        common.write_min(common.create_resource_type_list(), enums_fp)
 
     # Create grades
     grades: set = set()
@@ -224,7 +227,7 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         def sort_by_view_count(d):
             return d["view_count"]
 
-        sql = "SELECT resource_title, resource_type, resource_id, resource_author, resource_metadata, resource_description FROM topic_resources WHERE grade = $1 AND board = $2 AND subject = $3 AND chapter_iname = $4 AND topic_iname = $5"
+        sql = "SELECT resource_url, resource_title, resource_type, resource_id, resource_author, resource_metadata, resource_description FROM topic_resources WHERE grade = $1 AND board = $2 AND subject = $3 AND chapter_iname = $4 AND topic_iname = $5"
 
         args = [chapter_info["grade"], chapter_info["board"], chapter_info["subject"], chapter_info["iname"], topic]
 
@@ -239,6 +242,8 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         resources = await db.fetch(sql, *args)
         print(f"Parsing resource {resources} for topic {topic} and subtopic_parent {subtopic_parent}")
 
+
+        dat_f = {k: [] for k in [r.value for r in list(common.Resource)]}
         dat = []
 
         taken_pos = {}
@@ -266,7 +271,10 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
                 
         dat = sorted(dat, key=lambda x: x["resource_metadata"].get("view_count", 0), reverse=True)
         
-        return dat
+        for obj in dat:
+            dat_f[obj["resource_type"]].append(obj)
+        
+        return dat_f
     
     resources = {}
 
@@ -276,8 +284,8 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         resources[subtopic] = await resource_parse(subtopic, topic)
 
     if not resources.get("main"):
-        resources["main"] = []
-    resources["main"] += dat
+        resources["main"] = {}
+    resources["main"] |= dat
 
     if yt:
         # Do it twice to traverse data and data/data

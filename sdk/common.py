@@ -6,22 +6,29 @@ import os
 import subprocess
 import random
 import threading
-from enum import Enum, IntEnum
+from aenum import Enum, IntEnum
 import msgpack
 import pathlib
 
 debug_mode = os.environ.get("DEBUG", "0").lower() in ["1", "true"]
 
-class Resource(IntEnum):
-    whiteboard = 0 # Magnet Brain etc.
-    animated = 1 # Ex. Monocha. Animated Videos
-    lab = 2 # Lab Video
-    interactive = 3 # Truly interative experiments like PHeT
-    class_note = 4 # Class Notes
-    revision_note = 5 # Revision Notes
-    mock_test = 6 # Take a test
-    real_world = 7 # Discovery (How's It Made/Mythbuster)
-    problem_solving = 8 # Problem Solving
+class Resource(Enum):
+    _init_ = 'value __doc__'
+    whiteboard = 0, "Lectures" # Magnet Brain etc.
+    animated = 1, "Animated Videos" # Ex. Monocha. Animated Videos
+    lab = 2, "Lab Videos" # Lab Video
+    interactive = 3, "Interactive Experiments" # Truly interative experiments like PHeT
+    class_note = 4, "Class notes" # Class Notes
+    revision_note = 5, "Revision Notes" # Revision Notes
+    mock_test = 6, "Take A Test" # Take a test
+    real_world = 7, "Real World" # Discovery (How's It Made/Mythbuster)
+    problem_solving = 8, "Problem solving" # Problem Solving
+
+def create_resource_type_list() -> dict:
+    resource_types = {}
+    for r in list(Resource):
+        resource_types[r.value] = {"doc": r.__doc__, "enum_name": r.name}
+    return resource_types
 
 def get_resource_by_name(name: str) -> Resource:
     """Given the resource name, return the enum itself"""
