@@ -1,23 +1,104 @@
 resourceTypeData = {}
+alreadyRendered = {}
 
-function topicEventListener(grade, board, subject, chapter, body, topic) {
-    body.html("Loading topics")
+
+function isMobile() {
+    // Returns whether a device is a mobile device or not
+    return $(window).width() < 600;
+}
+
+function topicRenderer(grade, board, subject, chapter, body, topic, topicData, subtopic, res) {
+    // This actually renders topics with their videos, experiments etc
+    console.log("Called topic renderer with: ", grade, board, subject, chapter, body, topic, topicData, subtopic, res)
+    console.log(body)
+    body.html("<strong>Videos</strong>")
+
+    body.append("<br/><br/>")
+}
+
+function topicAlreadyRendered(topic, subtopic) {
+    // Helper function to check if a topic is already rendered or not
+    if(subtopic) {
+        arKey = topic + subtopic
+    } else {
+        arKey = topic
+    }
+    if(alreadyRendered[arKey]) {
+        return true
+    } else {
+        alreadyRendered[arKey] = true
+        return false
+    }
+}
+
+function topicEventListener(grade, board, subject, chapter, body, topic, topicData, subtopic) {
+    // Recursively handling topic clicks
+    isRendered = topicAlreadyRendered(topic, subtopic)
     setTimeout(() => {
         fetch(`/data/grades/${grade}/${board}/${subject}/${chapter}/resources-${topic}.lynx`)
         .then(r => parseLynx(r))
         .then(r => {
+            if(isRendered) {
+                return r
+            }
+            if(!subtopic) {
+                renderElem = $("<div>").appendTo(`#${topic}-body`)
+            }
+            else {
+                renderElem = $("<div>").appendTo(`#${topic}-${subtopic}-body`)
+            }
+            setTimeout(() => topicRenderer(grade, board, subject, chapter, renderElem, topic, r, topicData, subtopic, r), 0)
+            return r
+        })
+        .then(r => {
+            // Handle subtopics recursively if not already rendered
+            if(isRendered) {
+                return r
+            }
+
+            if(!topicData.subtopics) {
+                topicData.subtopics = {}
+            }
+            Object.entries(topicData.subtopics).forEach(([key, value]) => {
+                body.append(baseAccordian(`${topic}-${key}-accordian`))
+                addCard(`${topic}-${key}-accordian`, `${topic}-${key}`, value.name)
+                waitForElm(`#${topic}-${key}-collapse-card`)
+                .then(() => {
+                    $(`#${topic}-${key}-collapse-card`).on('show.bs.collapse', function (e) {
+                        e.stopPropagation()
+                        console.log(`Shown ${this.id}`)
+                        sbody = $(`#${topic}-${key}-body`)
+                        
+                        if(!body.attr("loaded-topics")) {
+                            topicEventListener(grade, board, subject, chapter, sbody, topic, value, key)
+                        }
+                    })
+                })   
+                console.log(key, value)
+            })
+            return r
+        })
+        .then(r => {
+            // Debug code
+            if(subtopic) {
+                return r
+            }
+            console.log("Started up debug code")
             if(searchParams.get("debug") == "1" || !isProd) { // Change this during prod
                 data = JSON.stringify(r)
-                body.html(baseAccordian(`${topic}-inner-accordian`))
-                $(`#${topic}-inner-body`).html("Loading...")
-                addCard(`${topic}-inner-accordian`, `${topic}-inner`, "Debug")
-                $(`#${topic}-inner-collapse-card`).on('show.bs.collapse', function (e) {
+                if(!isRendered) {
+                    body.append(baseAccordian(`${topic}-dbg-accordian`))
+                    addCard(`${topic}-dbg-accordian`, `${topic}-dbg`, "Debug")
+                }
+                $(`#${topic}-dbg-body`).html("Loading...")
+                $(`#${topic}-dbg-collapse-card`).on('show.bs.collapse', function (e) {
                     e.stopPropagation() // Ensure only childs event handler runs and not parent
-                    $(`#${topic}-inner-body`).html(data)
+                    $(`#${topic}-dbg-body`).html(`<pre>${data}</pre>`)
                 })
             }
+            return r
         })
-        .catch(() => body.html("Something went wrong... Check your internet connection?"))
+        .catch((e) => body.html(`Something went wrong... Check your internet connection? ${e}`))
     }, 1)
 }
 
@@ -41,7 +122,7 @@ function renderTopic(grade, board, subject, chapter) {
                     body = $(`#${key}-body`)
                     
                     if(!body.attr("loaded-topics")) {
-                        topicEventListener(grade, board, subject, chapter, body, key)
+                        topicEventListener(grade, board, subject, chapter, body, key, r.topics[key], null)
                     }
                 })
             })

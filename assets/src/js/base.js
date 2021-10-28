@@ -80,7 +80,7 @@ function addCard(id, prefix, title) {
         </div>
         <div id="${prefix}-collapse-card" class="collapse" aria-labelledby="${prefix}-card-div" data-parent="#${id}">
             <div class="card-body">
-                <p class="text-center" style="font-size: 18px" id="${prefix}-body-para"></p>
+                <p class="text-center" style="font-size: 18px; display: none;" id="${prefix}-body-para"></p>
                 <div id="${prefix}-body">
                 </div>
             </div>

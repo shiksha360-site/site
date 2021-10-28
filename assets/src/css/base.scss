@@ -13,6 +13,17 @@ $title-padding: 3px;
     display: none;
 }
 
+.chapter-button {
+    height: 100% !important; 
+    font-size: 15px;
+    margin-bottom: 15px !important;
+    display: inline-block; 
+    width: 100%; 
+    text-align: left !important;
+    white-space: normal;
+    word-break: break-word;
+}
+
 @media (min-width: 600px) {
     #toc {
         width: 70%;
@@ -26,6 +37,13 @@ $title-padding: 3px;
 
     .ic-content {
         padding: 3px;
+    }
+
+    .chapter-button {
+        font-size: 20px;
+        height: 60px !important;
+        word-break: default;
+        margin-bottom: 0px !important;
     }
 }
 
