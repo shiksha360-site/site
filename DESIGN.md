@@ -21,7 +21,7 @@ While not an objective, having all of this information freely available for othe
 
 The entire syllabus will be stored in the ``data`` repository as YAML files. YAML was chosen as it was simple (a database was not needed and data can easily be backed up and stored), easier to debug (we can directly edit the YAML files instead of going through the database and then modifying it using SQL/pgAdmin etc) and because it allowed comments (unlike JSON) and potentially unstructured data.
 
-Ultimately, this data is 'compiled' from YAML into minified json files (min.json). The PyYAML and Ramuel.yaml libraries are used to do this.
+Ultimately, this data is 'compiled' from YAML into msgpack. Ramuel.yaml is used to do this.
 
 We still do not have a solution to automate getting the syllabus or create the keywords/tags from the syllabus yet. This is currently done manually (see [Low Level Design](#low-level-design)).
 
@@ -44,3 +44,8 @@ Once we have gotten videos from each scraper, the master scraper can then sorts 
 # Low Level Design
 
 ## Resource
+
+
+# For my reference
+
+_root = Main root topic
