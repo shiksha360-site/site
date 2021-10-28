@@ -38,7 +38,7 @@ function topicAlreadyRendered(topic, subtopic) {
 function topicEventListener(grade, board, subject, chapter, body, topic, topicData, subtopic) {
     // Recursively handling topic clicks
     if(!subtopic) {
-        subtopic = "_root"
+        subtopic = "main"
     }
     isRendered = topicAlreadyRendered(topic, subtopic)
     setTimeout(() => {
@@ -48,7 +48,7 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
             if(isRendered) {
                 return r
             }
-            if(subtopic == "_root") {
+            if(subtopic == "main") {
                 renderElem = $("<div>").appendTo(`#${topic}-body`)
             }
             else {
@@ -87,7 +87,7 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
         })
         .then(r => {
             // Debug code
-            if(subtopic != "_root") {
+            if(subtopic != "main") {
                 return r
             }
             console.log(subtopic)
@@ -97,8 +97,8 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
                 if(!isRendered) {
                     body.append(baseAccordian(`${topic}-dbg-accordian`))
                     addCard(`${topic}-dbg-accordian`, `${topic}-dbg`, "Debug")
+                    $(`#${topic}-dbg-body`).html("Loading...")
                 }
-                $(`#${topic}-dbg-body`).html("Loading...")
                 $(`#${topic}-dbg-collapse-card`).on('show.bs.collapse', function (e) {
                     e.stopPropagation() // Ensure only childs event handler runs and not parent
                     $(`#${topic}-dbg-body`).html(`<pre>${data}</pre>`)
@@ -135,6 +135,9 @@ function renderTopic(grade, board, subject, chapter) {
                 })
             })
         })
+    })
+    .then(() => {
+        $("#main-collapse-card").collapse("show")
     })
     .catch(() => $("#toc").html("Something went wrong... Check your URL?"))
 }

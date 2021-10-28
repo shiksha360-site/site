@@ -275,7 +275,7 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
     
     # Main topic resources
     main = await resource_parse(topic, None)
-    with (build_chapter_dir / f"resources-{topic}-_root.lynx").open("wb") as res_json:
+    with (build_chapter_dir / f"resources-{topic}-main.lynx").open("wb") as res_json:
         common.write_min(main, res_json)
 
 
