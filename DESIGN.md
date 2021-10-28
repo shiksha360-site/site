@@ -48,4 +48,4 @@ Once we have gotten videos from each scraper, the master scraper can then sorts 
 
 # For my reference
 
-_root = Main root topic
+main = Main root topic. It is not allowed to have a subtopic called main inside main
