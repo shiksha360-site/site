@@ -72,7 +72,7 @@ baseAccordian = (id) => `
 
 function addCard(id, prefix, title) {
     baseHTML = `
-    <div class="card" id="${prefix}-card">
+    <section class="card" id="${prefix}-card">
         <div class="card-header" data-toggle="collapse" aria-controls="${prefix}-collapse-card" data-target="#${prefix}-collapse-card" id="${prefix}-card-div">
             <h4 id="${prefix}-header" class="mb-0">
                 ${title}
@@ -81,11 +81,16 @@ function addCard(id, prefix, title) {
         <div id="${prefix}-collapse-card" class="collapse" aria-labelledby="${prefix}-card-div" data-parent="#${id}">
             <div class="card-body">
                 <p class="text-center" style="font-size: 18px; display: none;" id="${prefix}-body-para"></p>
-                <div id="${prefix}-body">
-                </div>
+                <div id="${prefix}-body"></div>
             </div>
         </div>
-    </div>
+    </section>
     `
     $(`#${id}`).append(baseHTML)
+}
+
+function modalShow(title, body) {
+	$("#base-modal-label").html(title)
+	$("#base-modal-body").html(body)
+	$("#base-modal").modal()
 }

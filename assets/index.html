@@ -3,7 +3,7 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@2.7.1"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="prod/base.min.js?v=868dc765d-4c11-433e-9ff7-b82bea3c39f1"></script>
+    <script src="prod/base.min.js?v=5f0f758f6-820e-4b83-b89f-52ec131424c6"></script>
 <script defer>
   $(document).ready(getToc)
 </script>
@@ -21,20 +21,37 @@
     <!-- Material CSS -->
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material.min.css" rel="stylesheet" crossorigin>
 
-    <!-- Optional Material CSS for Plugins
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material-plugins.min.css" rel="stylesheet" crossorigin>
-    -->
+    
 
-    <link href="prod/base.min.css?v=8e2e91840-2efe-4478-b2f4-17468b12269d" rel="stylesheet"></link>
+    <link href="prod/base.min.css?v=59708246c-788d-4dac-85e1-550dd9b30409" rel="stylesheet"></link>
   <title>Shiksha360</title>
 </head>
   <body>
   <h2 class="title text-center">Shiksha360</h2>
       <h5 class="title text-center"><strong>Truly Hollistic Learning</strong></h5>
+    <!-- Basic Modal -->
+    <div class="modal fade" id="base-modal" tabindex="-1" aria-labelledby="base-modal-label">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="base-modal-label"></h5>
+            <button class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div id="base-modal-body" class="modal-body">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" data-dismiss="modal" aria-label="Close">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
 <span id="mobile-banner"></span>
   <img src="webp/ourvision.webp" class="nomobile center" width="300px" />
   <div id="toc-container">
-        <h4 id="toc" class="title">Loading...</h4>
+        <h4 id="toc" class="title"><span id="load-title">Loading...</span></h4>
       </div>
   <div class="index-container">
     <div id="our-vision">

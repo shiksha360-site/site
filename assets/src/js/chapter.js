@@ -1,23 +1,56 @@
 resourceTypeData = {}
 alreadyRendered = {}
 
+// Base Info (so we dont need huge function args)
+baseInfo = {}
+
+// Global Counter
+var globCounter = 0
 
 function isMobile() {
     // Returns whether a device is a mobile device or not
     return $(window).width() < 600;
 }
 
-function topicRenderer(grade, board, subject, chapter, body, topic, topicData, subtopic, res) {
+function videoIframeEvent(count) {
+    console.log("Called iframe event")
+    info = baseInfo[count]
+    modalShow(info.data.resource_title, "Video iframe here")
+}
+
+function videoRender(topic, subtopic, type, res, mobile_user, enumerator) {
+    let id =`${topic}-${subtopic}-${type}`
+    let body = $(`#${id}`)
+    let html = ""
+    if(!mobile_user) {
+        html = `<div class="video-container">`
+        res[type].forEach((v) => {
+            baseInfo[globCounter] = {"data": v, "topic": topic, "subtopic": subtopic, "enum": enumerator}
+            html += `<div onclick="videoIframeEvent('${globCounter}')" class="video-item"><img src="${v.resource_icon}" alt="${v.resource_description}"/><br/><small class="video-title">${v.resource_title}</small></div>`
+            globCounter += 1
+        })
+        html += "</div>"
+    }
+    else {
+        // TODO
+    }
+    body.append(html)
+}
+
+function topicRenderer(body, topic, subtopic, res) {
     // This actually renders topics with their videos, experiments etc
-    console.log("Called topic renderer with: ", grade, board, subject, chapter, body, topic, topicData, subtopic, res)
+    calculated = {}
+    mobile_user = isMobile()
+    console.log("Is mobile user:", mobile_user)
     Object.entries(resourceTypeData).forEach(([key, value]) => {
-        if(res[key].length) {
-            console.log(`Got ${topic}:${subtopic}`)
-            body.append(`<div id='${topic}-${subtopic}-${value.enum_name}'><strong>${value.doc}</strong></div>`)
+        if(res[key].length && !calculated[key]) {
+            body.append(`<div id='${topic}-${subtopic}-${key}'><strong>${value.doc}</strong></div>`)
+            calculated[key] = true
+            if(value.enum_name == "whiteboard" || value.enum_name == "animated" || value.enum_name == "lab") {
+                videoRender(topic, subtopic, key, res, mobile_user, value)
+            }
         }
     })
-
-    body.append("<br/><br/>")
 }
 
 function topicAlreadyRendered(topic, subtopic) {
@@ -35,14 +68,14 @@ function topicAlreadyRendered(topic, subtopic) {
     }
 }
 
-function topicEventListener(grade, board, subject, chapter, body, topic, topicData, subtopic) {
+function topicEventListener(body, topic, topicData, subtopic) {
     // Recursively handling topic clicks
     if(!subtopic) {
         subtopic = "main"
     }
     isRendered = topicAlreadyRendered(topic, subtopic)
     setTimeout(() => {
-        fetch(`/data/grades/${grade}/${board}/${subject}/${chapter}/resources-${topic}-${subtopic}.lynx`)
+        fetch(`/data/grades/${baseInfo.grade}/${baseInfo.board}/${baseInfo.subject}/${baseInfo.chapter}/resources-${topic}-${subtopic}.lynx`)
         .then(r => parseLynx(r))
         .then(r => {
             if(isRendered) {
@@ -54,7 +87,7 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
             else {
                 renderElem = $("<div>").appendTo(`#${topic}-${subtopic}-body`)
             }
-            setTimeout(() => topicRenderer(grade, board, subject, chapter, renderElem, topic, topicData, subtopic, r), 0)
+            setTimeout(() => topicRenderer(renderElem, topic, subtopic, r), 0)
             return r
         })
         .then(r => {
@@ -77,7 +110,7 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
                         sbody = $(`#${topic}-${key}-body`)
                         
                         if(!body.attr("loaded-topics")) {
-                            topicEventListener(grade, board, subject, chapter, sbody, topic, value, key)
+                            topicEventListener(sbody, topic, value, key)
                         }
                     })
                 })   
@@ -101,7 +134,7 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
                 }
                 $(`#${topic}-dbg-collapse-card`).on('show.bs.collapse', function (e) {
                     e.stopPropagation() // Ensure only childs event handler runs and not parent
-                    $(`#${topic}-dbg-body`).html(`<pre>${data}</pre>`)
+                    $(`#${topic}-dbg-body`).html(`<pre style="font-size: 12px;">${data}</pre>`)
                 })
             }
             return r
@@ -110,9 +143,26 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
     }, 1)
 }
 
-function renderTopic(grade, board, subject, chapter) {
-    $("#toc").html(baseAccordian("chapter-accordian"))
-    fetch(`/data/grades/${grade}/${board}/${subject}/${chapter}/info.lynx`)
+function createTopicEventListener(key, r) {
+    waitForElm(`#${key}-collapse-card`)
+    .then(() => {
+        $(`#${key}-collapse-card`).on('show.bs.collapse', function (e) {
+            body = $(`#${key}-body`)
+            
+            if(!body.attr("loaded-topics")) {
+                topicEventListener(body, key, r.topics[key], null)
+            }
+        })
+    })
+    if(alreadyRendered["_main-card"]) {
+        waitForElm("#main-collapse-card")
+        .then(() => $("#main-collapse-card").collapse("show"))
+    }
+}
+
+function renderTopic() {
+    $("#toc").append(baseAccordian("chapter-accordian"))
+    fetch(`/data/grades/${baseInfo.grade}/${baseInfo.board}/${baseInfo.subject}/${baseInfo.chapter}/info.lynx`)
     .then(r => parseLynx(r))
     .then(r => {
         Object.entries(r.topics).forEach(([key, value]) => {
@@ -123,21 +173,12 @@ function renderTopic(grade, board, subject, chapter) {
                 value.name = "Summary"
             }
             addCard("chapter-accordian", key, value.name)
-            waitForElm(`#${key}-collapse-card`)
-            .then(() => {
-                $(`#${key}-collapse-card`).on('show.bs.collapse', function (e) {
-                    console.log(`Shown ${this.id}`)
-                    body = $(`#${key}-body`)
-                    
-                    if(!body.attr("loaded-topics")) {
-                        topicEventListener(grade, board, subject, chapter, body, key, r.topics[key], null)
-                    }
-                })
-            })
+            setTimeout(() => createTopicEventListener(key, r), 1)
+            alreadyRendered[`_${key}-card`] = true
         })
     })
     .then(() => {
-        $("#main-collapse-card").collapse("show")
+        $("#load-title").css("display", "none")
     })
     .catch(() => $("#toc").html("Something went wrong... Check your URL?"))
 }
@@ -166,11 +207,16 @@ function chapterPane() {
         $("#toc").html("Hmmm... we couldn't find that chapter?")
     }
 
+    baseInfo.grade = grade
+    baseInfo.board = board
+    baseInfo.subject = subject
+    baseInfo.chapter = chapter
+
     document.title = `Grade ${grade} ${board.toUpperCase()} - ${subject} - Chapter ${chapter}`
 
     fetch("/data/keystone/resource_types.lynx")
     .then(r => parseLynx(r))
     .then(r => resourceTypeData = r)
-    .then(() => renderTopic(grade, board.toLowerCase(), subject, chapter))
+    .then(() => renderTopic())
     .catch(() => $("#toc").html("Something went wrong... Check your internet connection?"))
 }

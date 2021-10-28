@@ -3,8 +3,8 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@2.7.1"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="prod/base.min.js?v=5f13e3d7-1474-4515-89b9-c7cb0af5f10b"></script>
-<script src="prod/chapter.min.js?v=5f762c43-1522-4e48-bbaa-291769697155"></script>
+    <script src="prod/base.min.js?v=13fc92ca-243b-4bae-88cc-cd197aa7534f"></script>
+<script src="prod/chapter.min.js?v=21c61bea-0acd-486a-ac9b-02e32e6980c0"></script>
 <script defer>
   $(document).ready(chapterPane)
 </script>
@@ -22,19 +22,36 @@
     <!-- Material CSS -->
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material.min.css" rel="stylesheet" crossorigin>
 
-    <!-- Optional Material CSS for Plugins
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material-plugins.min.css" rel="stylesheet" crossorigin>
-    -->
+    
 
-    <link href="prod/base.min.css?v=cd10d72f-cc8a-47e6-946a-84daaf5e6ac2" rel="stylesheet"></link>
+    <link href="prod/base.min.css?v=965e63db-5f5d-4631-a2ea-edf1ecee7bee" rel="stylesheet"></link>
   <title>Subject</title>
 </head>
   <body>
   <h2 class="title text-center">Shiksha360</h2>
       <h5 class="title text-center"><strong>Truly Hollistic Learning</strong></h5>
+    <!-- Basic Modal -->
+    <div class="modal fade" id="base-modal" tabindex="-1" aria-labelledby="base-modal-label">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="base-modal-label"></h5>
+            <button class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div id="base-modal-body" class="modal-body">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" data-dismiss="modal" aria-label="Close">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
 <span id="mobile-banner"></span>
   <div id="toc-container">
-        <h4 id="toc" class="title">Loading...</h4>
+        <h4 id="toc" class="title"><span id="load-title">Loading...</span></h4>
       </div>
 <!-- jQuery, Bootstrap Bundle (includes Popper) and Material -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js" crossorigin defer></script>

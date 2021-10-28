@@ -20,9 +20,8 @@
     <!-- Material CSS -->
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material.min.css" rel="stylesheet" crossorigin>
 
-    <!-- Optional Material CSS for Plugins
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material-plugins.min.css" rel="stylesheet" crossorigin>
-    -->
+    
 
     <link href="prod/base.min.css?v={{uuid_gen()}}" rel="stylesheet"></link>
     {%- block title -%}
@@ -33,11 +32,29 @@
     {%- block header -%}
       <h2 class="title text-center">Shiksha360</h2>
       <h5 class="title text-center"><strong>Truly Hollistic Learning</strong></h5>
+    <!-- Basic Modal -->
+    <div class="modal fade" id="base-modal" tabindex="-1" aria-labelledby="base-modal-label">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="base-modal-label"></h5>
+            <button class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div id="base-modal-body" class="modal-body">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" data-dismiss="modal" aria-label="Close">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
     {%- endblock -%}
     <span id="mobile-banner"></span>
     {%- block content -%}
       <div id="toc-container">
-        <h4 id="toc" class="title">Loading...</h4>
+        <h4 id="toc" class="title"><span id="load-title">Loading...</span></h4>
       </div>
     {%- endblock -%}
 

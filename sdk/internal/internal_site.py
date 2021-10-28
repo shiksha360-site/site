@@ -441,6 +441,10 @@ async def new_resource(
         None,
         description="Optional description for the resource"
     ),
+    resource_icon: str = Query(
+        None,
+        description="**Optional for videos on youtube as those are gotten using the youtube api if no resource icon is provided**\n\nThe icon/image of the resource. On youtube videos, this is the thumbnail of the video by default *unless* overriden"
+    ),
     resource_author: str = Query(
         None,
         description="**Optional for videos on youtube as those are gotten using the youtube api if no resource author is provided**.\n\nThe author of the resource"
@@ -524,6 +528,7 @@ async def new_resource(
         for video_item in video.loop():
             resource_title = resource_title or video_item["snippet"]["title"]
             resource_author = resource_author or video_item["snippet"]["channelTitle"]
+            resource_icon = resource_icon or video_item["snippet"]["thumbnails"]["default"]["url"]
             res_meta["yt_video_url"] = video_id
             if not resource_metadata.get("view_count"):
                 res_meta["view_count"] = int(video_item["statistics"]["viewCount"])
@@ -534,11 +539,14 @@ async def new_resource(
         return api_error("You must set resource_author")
     elif not resource_title:
         return api_error("You must set resource_title")
+    elif not resource_icon:
+        return api_error("You must set resource_icon")
 
     id = await app.state.db.fetchval(
         """INSERT INTO topic_resources (grade, board, subject, chapter_num, chapter_iname, topic_iname, subtopic_parent,
-        resource_type, resource_title, resource_description, resource_url, resource_author, resource_metadata, resource_id) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING resource_id""",
+        resource_type, resource_title, resource_description, resource_url, resource_author, resource_metadata, resource_id,
+        resource_icon) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING resource_id""",
         grade,
         board,
         subject,
@@ -552,7 +560,8 @@ async def new_resource(
         resource_url,
         resource_author,
         orjson.dumps(res_meta).decode("utf-8"),
-        id
+        id,
+        resource_icon
     )
 
     return api_success(repaired=repaired, id=str(id), force_200=True)

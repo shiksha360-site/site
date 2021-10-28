@@ -90,3 +90,29 @@ $title-padding: 3px;
 #our-vision-header {
     font-family: "Times New Roman", Times, serif;
 }
+
+.video-item {
+    font-size: 18px;
+    vertical-align: top;
+    display: inline-block;
+    margin: 10px;
+    width: 170px;
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    cursor: pointer;
+}
+
+.video-title {
+    white-space: normal;
+    padding-top: 2px;
+}
+
+.video-container {
+    height: 100%;
+    width: 100%;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    white-space:nowrap;
+    line-height: 13px;
+    margin-top: 5px;
+}
