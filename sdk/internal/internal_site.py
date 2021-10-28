@@ -306,6 +306,8 @@ def add_or_edit_topic(
 
     **NOTE** This does not handle adding videos to a topic. Use /topics/videos for that
     """
+    if topic_name_internal == "_root" or subtopic_parent == "_root":
+        return api_error("Illegal topic_name_internal or subtopic_parent!", status_code=404)
     subject = common.get_subject_name(grade, subject)
 
     info_yaml = Path("data/grades") / str(grade.value) / board.value.lower() / subject / str(chapter) / "info.yaml"
@@ -445,6 +447,9 @@ async def new_resource(
     )
 ):
     """Create a new video or edits an existing video"""
+    if topic_name_internal == "_root" or subtopic_parent == "_root":
+        return api_error("Illegal topic_name_internal or subtopic_parent!", status_code=404)
+
     subject = common.get_subject_name(grade, subject)
 
     resource_metadata = resource_metadata.resource_metadata

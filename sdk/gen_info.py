@@ -136,10 +136,7 @@ async def gen_info(db: asyncpg.Pool, yt: Youtube):
 
             # Parse all the topics
             for topic in chapter_info["topics"]:
-                chapter_info["topics"], resources = await parse_topic(db, yt, chapter_info, topic)
-
-                with (build_chapter_dir / f"resources-{topic}.lynx").open("w") as res_json:
-                    common.write_min(resources, res_json)
+                chapter_info["topics"] = await parse_topic(db, yt, chapter_info, topic, build_chapter_dir)
 
             # Write info
             with (build_chapter_dir / "info.lynx").open("w") as chapter_info_json:
@@ -209,7 +206,7 @@ def get_per_grade_subjects(grade: int, subjects_data: dict):
         subjects[_subject] = subjects_data[_subject]
     return subjects
 
-async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: str):
+async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: str, build_chapter_dir: pathlib.Path):
     # Fix and add proper reject stuff
     if chapter_info["topics"][topic].get("reject") is None:
         chapter_info["topics"][topic]["reject"] = []
@@ -276,16 +273,17 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         
         return dat_f
     
-    resources = {}
+    # Main topic resources
+    main = await resource_parse(topic, None)
+    with (build_chapter_dir / f"resources-{topic}-_root.lynx").open("wb") as res_json:
+        common.write_min(main, res_json)
 
-    dat = await resource_parse(topic, None)
 
-    for subtopic in deepcopy(chapter_info["topics"][topic]["subtopics"]):
-        resources[subtopic] = await resource_parse(subtopic, topic)
+    for subtopic in deepcopy(chapter_info["topics"][topic]["subtopics"]):            
+        subtopic_res = await resource_parse(subtopic, topic)
+        with (build_chapter_dir / f"resources-{topic}-{subtopic}.lynx").open("wb") as res_json:
+            common.write_min(subtopic_res, res_json)
 
-    if not resources.get("main"):
-        resources["main"] = {}
-    resources["main"] |= dat
 
     if yt:
         # Do it twice to traverse data and data/data
@@ -295,4 +293,4 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         if not os.getcwd().endswith("data"):
             os.chdir("data")
 
-    return chapter_info["topics"], resources
+    return chapter_info["topics"]

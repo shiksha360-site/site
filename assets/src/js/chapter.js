@@ -9,9 +9,14 @@ function isMobile() {
 
 function topicRenderer(grade, board, subject, chapter, body, topic, topicData, subtopic, res) {
     // This actually renders topics with their videos, experiments etc
+    alert(JSON.stringify(res))
     console.log("Called topic renderer with: ", grade, board, subject, chapter, body, topic, topicData, subtopic, res)
-    console.log(body)
-    body.html("<strong>Videos</strong>")
+    Object.entries(resourceTypeData).forEach(([key, value]) => {
+        if(res[key].length) {
+            console.log(`Got ${topic}:${subtopic}`)
+            body.append(`<div id='${topic}-${subtopic}-${value.enum_name}'><strong>${value.doc}</strong></div>`)
+        }
+    })
 
     body.append("<br/><br/>")
 }
@@ -33,21 +38,24 @@ function topicAlreadyRendered(topic, subtopic) {
 
 function topicEventListener(grade, board, subject, chapter, body, topic, topicData, subtopic) {
     // Recursively handling topic clicks
+    if(!subtopic) {
+        subtopic = "_root"
+    }
     isRendered = topicAlreadyRendered(topic, subtopic)
     setTimeout(() => {
-        fetch(`/data/grades/${grade}/${board}/${subject}/${chapter}/resources-${topic}.lynx`)
+        fetch(`/data/grades/${grade}/${board}/${subject}/${chapter}/resources-${topic}-${subtopic}.lynx`)
         .then(r => parseLynx(r))
         .then(r => {
             if(isRendered) {
                 return r
             }
-            if(!subtopic) {
+            if(subtopic == "_root") {
                 renderElem = $("<div>").appendTo(`#${topic}-body`)
             }
             else {
                 renderElem = $("<div>").appendTo(`#${topic}-${subtopic}-body`)
             }
-            setTimeout(() => topicRenderer(grade, board, subject, chapter, renderElem, topic, r, topicData, subtopic, r), 0)
+            setTimeout(() => topicRenderer(grade, board, subject, chapter, renderElem, topic, topicData, subtopic, r), 0)
             return r
         })
         .then(r => {
@@ -80,7 +88,7 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
         })
         .then(r => {
             // Debug code
-            if(subtopic) {
+            if(topic != "main" && subtopic != "main") {
                 return r
             }
             console.log("Started up debug code")
