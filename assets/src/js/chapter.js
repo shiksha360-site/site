@@ -9,7 +9,6 @@ function isMobile() {
 
 function topicRenderer(grade, board, subject, chapter, body, topic, topicData, subtopic, res) {
     // This actually renders topics with their videos, experiments etc
-    alert(JSON.stringify(res))
     console.log("Called topic renderer with: ", grade, board, subject, chapter, body, topic, topicData, subtopic, res)
     Object.entries(resourceTypeData).forEach(([key, value]) => {
         if(res[key].length) {
@@ -88,9 +87,10 @@ function topicEventListener(grade, board, subject, chapter, body, topic, topicDa
         })
         .then(r => {
             // Debug code
-            if(topic != "main" && subtopic != "main") {
+            if(subtopic != "_root") {
                 return r
             }
+            console.log(subtopic)
             console.log("Started up debug code")
             if(searchParams.get("debug") == "1" || !isProd) { // Change this during prod
                 data = JSON.stringify(r)
