@@ -24,6 +24,12 @@ $title-padding: 3px;
     word-break: break-word;
 }
 
+.grade-btn {
+    height: 60px !important; 
+    font-size: 20px; 
+    width: 100%;
+}
+
 @media (min-width: 600px) {
     #toc {
         width: 70%;
@@ -32,8 +38,6 @@ $title-padding: 3px;
     .nomobile {
         display: block;
     }
-
-    // Unused right now
 
     .ic-content {
         padding: 3px;
@@ -44,6 +48,20 @@ $title-padding: 3px;
         height: 60px !important;
         word-break: default;
         margin-bottom: 0px !important;
+    }
+}
+
+@media (min-width: 1000px) {
+    .grade-container {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .grade-btn {
+        flex-basis: 30%;
+        margin: 0 auto;
+        padding: 0;
+        display: grid;
     }
 }
 
@@ -115,4 +133,13 @@ $title-padding: 3px;
     white-space:nowrap;
     line-height: 13px;
     margin-top: 5px;
+}
+
+.col-title {
+    margin: 0 auto;
+    text-align: center;
+}
+
+.col {
+    margin-bottom: 30px;
 }

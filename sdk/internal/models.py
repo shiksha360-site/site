@@ -10,6 +10,7 @@ if True is False:
     Resource.name # Just to make VSCode think resource is being accessed
 
 class Grade(IntEnum):
+    grade5 = 5
     grade6 = 6
     grade7 = 7
     grade8 = 8

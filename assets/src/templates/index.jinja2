@@ -15,9 +15,24 @@
 {% endblock %}
 
 {% block content %}
-  <img src="webp/ourvision.webp" class="nomobile center" width="300px" />
-  {{ super() }}
   <div class="index-container">
+    <div id="what-we-are" class="nomobile">
+      <div class="row">
+        <div class="col">
+          <h5 class="col-title">Animations</h5>
+        </div>
+        <div class="col">
+          <h5 class="col-title">Lectures</h5>
+        </div>
+        <div class="col">
+          <h5 class="col-title">Experiments</h5>
+        </div>
+        <div class="col">
+          <h5 class="col-title">Applications</h5>
+        </div>
+      </div>
+    </div>
+    {{ super() }}
     <div id="our-vision">
       <div class="ic-content">
         <h2 id="our-vision-header"><strong>Our Vision</strong></h2>

@@ -92,5 +92,13 @@ function addCard(id, prefix, title) {
 function modalShow(title, body) {
 	$("#base-modal-label").html(title)
 	$("#base-modal-body").html(body)
-	$("#base-modal").modal()
+    modal = $("#base-modal")
+    if(!modal.attr("yt-eventlistener-added")) {
+        modal.on("hide.bs.modal", function() {
+            console.log("Killing videos")
+            videoInfo.player.stopVideo()
+        })
+        modal.attr("yt-eventlistener-added", true)
+    }
+	modal.modal()
 }

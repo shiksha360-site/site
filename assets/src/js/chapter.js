@@ -17,10 +17,15 @@ function videoIframeEvent(count) {
     info = baseInfo[count]
     res_meta = info.data.resource_metadata
     html = ""
+    var id = `${info.topic}-${info.subtopic}-${info.data.resource_id}`
     if(res_meta.yt_video_url) {
-        html += `<iframe width="500px" height="400px" src="https://www.youtube.com/embed/${res_meta.yt_video_url}" title="${info.data.resource_metadata}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        html += `<iframe id='${id}' width="500px" height="400px" src="https://www.youtube.com/embed/${res_meta.yt_video_url}?enablejsapi=1" title="${info.data.resource_metadata}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
     }
     modalShow(info.data.resource_title, html)
+    waitForElm(`#${id}`)
+    .then(() => {
+        playYt(id)
+    })
 }
 
 function videoRender(topic, subtopic, type, res, mobile_user, enumerator) {
