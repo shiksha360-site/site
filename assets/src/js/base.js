@@ -10,6 +10,8 @@ const isProd = false // Whether the site is in production mode or not
 // Subject Cache
 var subjectCache = {}
 
+var ourVision = ""
+
 // For now, we will offer language switching as well
 var lang = localStorage.getItem("lang")
 if(!lang) {
@@ -38,7 +40,7 @@ function getToc() {
     fetch("/data/keystone/index.lynx")
     .then(r => parseLynx(r))
     .then(r => {
-        $("#our-vision-text").html(r.ourvision)
+        ourVision = r.ourvision
     })
 }
 

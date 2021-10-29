@@ -50,7 +50,7 @@
         deepLinking: true,
         presets: [
           SwaggerUIBundle.presets.apis,
-          SwaggerUIStandalonePreset.slice(0)
+          SwaggerUIStandalonePreset
         ],
         plugins: [
           SwaggerUIBundle.plugins.DownloadUrl
@@ -64,7 +64,4 @@
   </script>
   </body>
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-themes@3.0.1/themes/3.x/theme-material.min.css" />
-  <style>
-    .swagger-ui .scheme-container, .swagger-ui .topbar { display: none !important; }
-  </style>
 </html>

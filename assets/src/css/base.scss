@@ -1,5 +1,9 @@
 $title-padding: 3px;
 
+html {
+    overflow-x: hidden;
+}
+
 .title {
     padding: $title-padding;
 }
@@ -14,7 +18,7 @@ $title-padding: 3px;
 }
 
 .chapter-button {
-    height: 100% !important; 
+    height: 100% !important;
     font-size: 15px;
     margin-bottom: 15px !important;
     display: inline-block; 
@@ -142,4 +146,8 @@ $title-padding: 3px;
 
 .col {
     margin-bottom: 30px;
+}
+
+.center-flex {
+    display: flex;
 }

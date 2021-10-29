@@ -17,6 +17,7 @@ class KalanRequestHandler(BaseHTTPMiddleware):
         self.exc_handler = exc_handler
         self.api_ver = api_ver
         self.cwd = os.getcwd()
+        app.add_exception_handler(Exception, exc_handler)
         
         # Methods that should be allowed by CORS
         self.cors_allowed = "GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS"
@@ -60,8 +61,8 @@ class KalanRequestHandler(BaseHTTPMiddleware):
 
         try:
             res = await self._dispatcher(path, request, call_next)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Site Error Occurred") 
+        except BaseException as exc:  # pylint: disable=broad-except
+            #logger.exception("Site Error Occurred") 
             res = await self.exc_handler(request, exc, log=True)
         
         self._log_req(path, request, res)
@@ -84,8 +85,8 @@ class KalanRequestHandler(BaseHTTPMiddleware):
         # Process request with retry
         try:
             response = await call_next(request)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Site Error Occurred")
+        except BaseException as exc:  # pylint: disable=broad-except
+            #logger.exception("Site Error Occurred")
             response = await self.exc_handler(request, exc)
 
         process_time = time.time() - start_time

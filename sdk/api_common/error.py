@@ -12,9 +12,10 @@ import time
 def etrace(ex):
      return "".join(traceback.format_exception(ex)) # COMPAT: Python 3.10 only
 
-class WebError():         
+class WebError():
     @staticmethod
     async def error_handler(request, exc, log: bool = True):
+
         error_id = str(uuid.uuid4())
         curr_time = time.time()
 

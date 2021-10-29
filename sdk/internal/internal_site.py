@@ -80,7 +80,7 @@ async def _fl_error_handler(request, exc):
 app.add_middleware(
     KalanRequestHandler, 
     exc_handler=WebError.error_handler,
-    api_ver=API_VERSION
+    api_ver=API_VERSION,
 )
 
 
