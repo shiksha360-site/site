@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS topic_resources (
 
 CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL,
+    user_id BIGINT NOT NULL,
     email TEXT,
     pass TEXT NOT NULL,
     token TEXT NOT NULL,
