@@ -90,6 +90,9 @@ func init() {
 			// TODO: CHANGE THIS IN PROD
 			prefix := "/api"
 
+			// Setup smtp
+			common.SetupEmailCreds()
+
 			// Start server
 			server.StartServer(prefix, dirname, db, rdb)
 		},

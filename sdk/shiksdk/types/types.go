@@ -5,6 +5,11 @@ type Command struct {
 	Handler     func(cmd []string) // Function associated with the command
 }
 
+type SMTPCredsJSON struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type WebsocketIdentifyPayload struct {
 	ID       string `json:"id"`        // ID
 	Token    string `json:"token"`     // Token
@@ -47,4 +52,9 @@ type Login struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password" binding:"required"`
+}
+
+type AccountRecovery struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
 }
