@@ -64,7 +64,7 @@ type Client struct {
 	control chan []byte
 
 	// ID of the client
-	ID int
+	ID string
 
 	// API Token of the client
 	Token string
@@ -118,22 +118,13 @@ func (c *Client) readPump() {
 				return
 			}
 
-			// pId is the user id in payload
-			pId, err := strconv.Atoi(payload.ID)
-
-			if err != nil {
-				log.Error("Websocket unmarshal error: ", err)
-				sendWsData(c, "invalid_payload", err.Error())
-				closeWs(c, types.InvalidAuth)
-				return
-			}
-			if pId <= 0 || payload.Token == "" {
+			if payload.Token == "" || payload.ID == "" {
 				sendWsData(c, "invalid_payload", "Invalid ID or token sent. Got ID of "+payload.ID+" and api token of "+payload.Token)
 				closeWs(c, types.InvalidAuth)
 				return
 			}
 
-			var userID pgtype.Int8
+			var userID pgtype.UUID
 
 			err = c.hub.postgres.QueryRow(ctx, "SELECT user_id FROM users WHERE user_id = $1 AND token = $2", payload.ID, payload.Token).Scan(&userID)
 			if err != nil {
@@ -147,12 +138,12 @@ func (c *Client) readPump() {
 				closeWs(c, types.InvalidAuth)
 				return
 			}
-			c.ID = pId
+			c.ID = payload.ID
 			c.Token = payload.Token
 			c.IdentityStatus = true
 			c.SendAll = payload.SendAll
 			c.SendNone = payload.SendNone
-			c.RLChannel = "wsrl-" + strconv.Itoa(c.ID)
+			c.RLChannel = "wsrl-" + c.ID
 			// Identify successful. Ratelimits can be handled here later
 
 			// Request ratelimit check (IDENTITY = 2 requests)
@@ -206,7 +197,7 @@ func msgPump(c *Client) {
 		c.MessagePumpUp = true
 	}
 
-	channelName := "user-" + strconv.Itoa(c.ID)
+	channelName := "user-" + c.ID
 
 	go func() {
 		if !c.SendAll {
@@ -325,7 +316,7 @@ func (c *Client) writePump() {
 
 func getRatelimit(c *Client) int {
 	var requestsMade int
-	if c.ID != 0 {
+	if c.ID != "" {
 		requests, err := strconv.Atoi(c.hub.redis.Get(ctx, c.RLChannel).Val())
 		if err == nil {
 			requestsMade = requests

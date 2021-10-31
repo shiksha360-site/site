@@ -31,3 +31,20 @@ var (
 	Ratelimited   = WebsocketCloseCode{Code: 4012, Description: "Ratelimited"}
 	InternalError = WebsocketCloseCode{Code: 4500, Description: "Internal Server Error, try reconnecting?"}
 )
+
+type UserPreferences struct {
+	Grade int    `json:"grade" binding:"required,oneof=5 6 7 8 9 10 11 12"` // Add new grades here
+	Board string `json:"board" binding:"required"`
+}
+
+type Register struct {
+	Username    string          `json:"username" binding:"required"`
+	Password    string          `json:"password" binding:"required"`
+	Preferences UserPreferences `json:"preferences"`
+}
+
+type Login struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password" binding:"required"`
+}

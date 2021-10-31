@@ -20,9 +20,10 @@ import (
 )
 
 var (
-	db     *pgxpool.Pool
-	rdb    *redis.Client
-	errLog string
+	db        *pgxpool.Pool
+	rdb       *redis.Client
+	errLog    string
+	blockExit bool = false // Whether or not shutdown should be blocked to allow services to cleanup (uvicorn needs this)
 )
 
 var sigs = make(chan os.Signal, 1)
@@ -54,6 +55,8 @@ func init() {
 	commands["devserver"] = types.Command{
 		Description: "Run the internal api",
 		Handler: func(cmd []string) {
+			log.Info("Running python3.10 sdk/_devserver.py")
+			blockExit = true
 			dirname := cmd[0]
 			os.Setenv("_DEV", "1")
 			os.Chdir(dirname + "/site")
@@ -78,10 +81,10 @@ func init() {
 		Handler: func(cmd []string) {
 			dbSetupAndCleanup()
 
-			defer db.Close()
-			defer rdb.Close()
-
 			dirname := cmd[0]
+
+			os.Chdir(dirname + "/site")
+
 			os.Remove(dirname + "/shiksha.sock")
 
 			// TODO: CHANGE THIS IN PROD
@@ -102,9 +105,9 @@ func dbSetupAndCleanup() {
 	}
 
 	rdb = redis.NewClient(&redis.Options{
-		Addr:     "localhost:1001",
+		Addr:     "localhost:9282",
 		Password: "",
-		DB:       1,
+		DB:       0,
 	})
 }
 
@@ -117,7 +120,7 @@ func main() {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
-		sigs <- syscall.SIGUSR1
+		return
 	}
 
 	if val, ok := commands[os.Args[1]]; ok {
@@ -136,8 +139,17 @@ func main() {
 
 	// Give one second for all commands to reorient unless we have a user defined signal 1 or 2
 	if s != syscall.SIGUSR1 {
-		time.Sleep(1 * time.Second)
+		if blockExit {
+			time.Sleep(1 * time.Second)
+		}
 		log.Info("Going to exit gracefully due to signal", s, "\n")
+	}
+
+	if db != nil {
+		db.Close()
+	}
+	if rdb != nil {
+		rdb.Close()
 	}
 	os.Exit(0)
 }

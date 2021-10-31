@@ -22,10 +22,11 @@ CREATE TABLE IF NOT EXISTS topic_resources (
 
 CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id UUID NOT NULL DEFAULT uuid_generate_v4(),
     email TEXT,
     pass TEXT NOT NULL,
     token TEXT NOT NULL,
     preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
-    video_preferences JSONB NOT NULL DEFAULT '{}'::jsonb
+    video_preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+    login_attempts INTEGER DEFAULT 0
 );
