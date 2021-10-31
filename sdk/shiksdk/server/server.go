@@ -65,7 +65,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		var data types.Register
 		err := c.ShouldBindJSON(&data)
 		if err != nil {
-			c.JSON(400, apiReturn(false, err.Error(), nil))
+			c.JSON(422, apiReturn(false, err.Error(), nil))
 			return
 		}
 
@@ -122,7 +122,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		var data types.Login
 		err := c.ShouldBindJSON(&data)
 		if err != nil {
-			c.JSON(400, apiReturn(false, err.Error(), nil))
+			c.JSON(422, apiReturn(false, err.Error(), nil))
 			return
 		}
 
@@ -180,7 +180,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		var data types.AccountRecovery
 		err := c.ShouldBindJSON(&data)
 		if err != nil {
-			c.JSON(400, apiReturn(false, err.Error(), nil))
+			c.JSON(422, apiReturn(false, err.Error(), nil))
 			return
 		}
 		if data.Username != "" && data.Email != "" {
@@ -218,11 +218,30 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 
 		// Send the reset email
 		resetToken := common.RandStringBytes(169)
-		rdb.Set(ctx, "recovery-"+resetToken, userId, 5*time.Minute)
+		rdb.Set(ctx, "recovery-"+resetToken, userId.String, 5*time.Minute)
 
 		common.SendRecoveryEmail(userId.String, email, resetToken)
 
 		c.JSON(200, apiReturn(true, "Sent recovery email. Check your spam folder if you didn't recieve it", nil))
+	})
+
+	// HEAD /account/recovery?user_id=USERID&token=TOKEN -> Checks whether or not a user_id, token combo is valid
+	router.HEAD("/account/recovery", func(c *gin.Context) {
+		userId := c.Query("user_id")
+		token := c.Query("token")
+
+		if token == "" || userId == "" {
+			c.Status(422)
+			return
+		}
+
+		data := rdb.Get(ctx, "recovery-"+token).Val()
+		log.Info(data, userId)
+		if data == userId {
+			c.Status(200)
+			return
+		}
+		c.Status(400)
 	})
 
 	router.GET("/ws", func(c *gin.Context) {

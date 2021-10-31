@@ -1,0 +1,32 @@
+{% extends "_base.jinja2" %}
+
+{% block head %}
+<script src="prod/recovery_stage2.min.js?v={{uuid_gen()}}"></script>
+<script defer>
+  $(document).ready(checkInfo)
+</script>
+{% endblock %}
+
+{% block title %}
+  <title>Reset Password</title>
+{% endblock %}
+
+{% block header %}
+  {{ super() }}
+{% endblock %}
+
+{% block content %}
+  {{ super() }}
+  <h4 class="center">Account Recovery: Reset Your Password</h4>
+  <form id="reset-pwd-form" style="display: none;">
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" class="form-control" id="password">
+    </div>
+    <div class="form-group">
+      <label for="confirm-password">Confirm Password</label>
+      <input type="password" class="form-control" id="confirm-password">
+    </div>
+    <button type="button" class="btn btn-outline-primary" onclick="recoverAccount()">Recover Account</button>
+  </form>
+{% endblock %}
