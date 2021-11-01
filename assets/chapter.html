@@ -3,9 +3,10 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@2.7.1"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="prod/base.min.js?v=6e4afe65-34a3-40bf-a30b-b85eb368d6b5"></script>
-<script src="prod/chapter.min.js?v=1ba6e2c8-895d-4f18-940d-e7f2ca298f9c"></script>
-<script src="prod/ytplayer.min.js?v=8d93e014-01a7-462f-9bbd-b8c22146e452"></script>
+    <script src="prod/base.min.js?v=3900f608-8db1-4c44-8884-7de033710eb0"></script>
+    <script src="prod/login.min.js?v=22ea11f0-8d79-4de6-831f-3bfa85be687f"></script>
+<script src="prod/chapter.min.js?v=70d48309-a851-4cf6-9aa1-9178a3547877"></script>
+<script src="prod/ytplayer.min.js?v=ccb5ce10-f7eb-4960-87a0-50f39d24cf29"></script>
 <script defer>
   $(document).ready(chapterPane)
 </script>
@@ -26,12 +27,27 @@
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material-plugins.min.css" rel="stylesheet" crossorigin>
     
 
-    <link href="prod/base.min.css?v=d3f29174-b447-4ac5-91dd-b9754d2356d3" rel="stylesheet"></link>
+    <link href="prod/base.min.css?v=26e44cc2-74ba-4175-82b5-16127de527c7" rel="stylesheet"></link>
   <title>Subject</title>
 </head>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarSupportedContent">
+      <ul class="navbar-nav" id="main-navbar">
+        <li class="nav-item active" id="navbar-login-check-item">
+          <a class="nav-link" id="navbar-login-check" href="#"></a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <script defer>
+    $(document).ready(loginCheck)
+  </script>
   <body>
   <h2 class="title text-center">Shiksha360</h2>
-      <h4 class="title text-center"><strong>Truly Hollistic Learning</strong></h4>
+    <h4 class="title text-center"><strong>Truly Hollistic Learning</strong></h4>
     <!-- Basic Modal -->
     <div class="modal fade" id="base-modal" tabindex="-1" aria-labelledby="base-modal-label">
       <div class="modal-dialog">
@@ -44,7 +60,7 @@
           </div>
           <div id="base-modal-body" class="modal-body">
           </div>
-          <div class="modal-footer">
+          <div id="base-modal-footer" class="modal-footer">
             <button class="btn btn-primary" data-dismiss="modal" aria-label="Close">Close</button>
           </div>
         </div>

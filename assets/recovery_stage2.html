@@ -3,8 +3,9 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@2.7.1"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="prod/base.min.js?v=20ac7844-0973-4c10-9fdf-1c1c0b936928"></script>
-<script src="prod/recovery_stage2.min.js?v=e4545def-1387-4445-a7e7-0061691eeecb"></script>
+    <script src="prod/base.min.js?v=94d510ab-9b83-4459-a07e-e65a9d5c73e7"></script>
+    <script src="prod/login.min.js?v=45f73235-079f-4013-bb09-1d400e662d27"></script>
+<script src="prod/recovery_stage2.min.js?v=24026e37-c490-4df5-85f2-2c8143a1ea06"></script>
 <script defer>
   $(document).ready(checkInfo)
 </script>
@@ -25,12 +26,27 @@
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material-plugins.min.css" rel="stylesheet" crossorigin>
     
 
-    <link href="prod/base.min.css?v=ded17258-4cc8-43ad-bf58-d9f4624fb285" rel="stylesheet"></link>
+    <link href="prod/base.min.css?v=baa04ccd-349c-4d38-a0ec-55229f2ad941" rel="stylesheet"></link>
   <title>Reset Password</title>
 </head>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarSupportedContent">
+      <ul class="navbar-nav" id="main-navbar">
+        <li class="nav-item active" id="navbar-login-check-item">
+          <a class="nav-link" id="navbar-login-check" href="#"></a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <script defer>
+    $(document).ready(loginCheck)
+  </script>
   <body>
   <h2 class="title text-center">Shiksha360</h2>
-      <h4 class="title text-center"><strong>Truly Hollistic Learning</strong></h4>
+    <h4 class="title text-center"><strong>Truly Hollistic Learning</strong></h4>
     <!-- Basic Modal -->
     <div class="modal fade" id="base-modal" tabindex="-1" aria-labelledby="base-modal-label">
       <div class="modal-dialog">
@@ -43,7 +59,7 @@
           </div>
           <div id="base-modal-body" class="modal-body">
           </div>
-          <div class="modal-footer">
+          <div id="base-modal-footer" class="modal-footer">
             <button class="btn btn-primary" data-dismiss="modal" aria-label="Close">Close</button>
           </div>
         </div>

@@ -7,13 +7,36 @@ baseInfo = {}
 // Global Counter
 var globCounter = 0
 
+var currintervalYt = -1
+
 function isMobile() {
     // Returns whether a device is a mobile device or not
     return $(window).width() < 600;
 }
 
+function trackYtProgress(event) {
+    videoId = event.player.getVideoData().video_url
+    if(localStorage.getItem("login-data")) {
+        loginData = JSON.parse(loginData)
+        fetch("/api/videos/track", {
+            method: "PATCH",
+            headers: {"Authorization": loginData.ctx.token},
+            body: JSON.stringify({
+                user_id: loginData.ctx.user_id,
+                video_id: videoId, 
+                duration: event.player.getCurrentTime(), 
+                is_playing: event.data == YT.PlayerState.PLAYING,
+            })
+        })
+    }
+}
+
 function videoIframeEvent(count) {
     console.log("Called iframe event")
+    if(currintervalYt != -1) {
+        clearInterval(currintervalYt)
+        currintervalYt = -1
+    }
     info = baseInfo[count]
     res_meta = info.data.resource_metadata
     html = ""
@@ -24,7 +47,8 @@ function videoIframeEvent(count) {
     modalShow(info.data.resource_title, html)
     waitForElm(`#${id}`)
     .then(() => {
-        playYt(id)
+        playYt(id, trackYtProgress, trackYtProgress)
+        currintervalYt = setInterval(trackYtProgress, 3000)
     })
 }
 
@@ -196,6 +220,7 @@ function renderTopic() {
 function chapterPane() {
     searchParams = new URLSearchParams(window.location.search)
     window["searchParams"] = searchParams
+    window["inChapter"] = true
     grade = searchParams.get("grade")
     board = searchParams.get("board")
     subject = searchParams.get("subject")

@@ -91,16 +91,21 @@ function addCard(id, prefix, title) {
     $(`#${id}`).append(baseHTML)
 }
 
-function modalShow(title, body) {
+function modalShow(title, body, deferRender) {
+    // Defer render, defers resetting of footer side effects and the rendering of the modal
 	$("#base-modal-label").html(title)
 	$("#base-modal-body").html(body)
     modal = $("#base-modal")
-    if(!modal.attr("yt-eventlistener-added")) {
+    if(!modal.attr("yt-eventlistener-added") && window["inChapter"]) {
         modal.on("hide.bs.modal", function() {
             console.log("Killing videos")
             videoInfo.player.stopVideo()
         })
         modal.attr("yt-eventlistener-added", true)
     }
+    if(deferRender) {
+        return modal
+    }
+    $("#login-user-button").remove()
 	modal.modal()
 }

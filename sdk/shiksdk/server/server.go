@@ -8,10 +8,15 @@ package server
 
 import (
 	"encoding/json"
+	"regexp"
 	"shiksdk/common"
 	"shiksdk/types"
 	"strconv"
+	"strings"
 	"time"
+
+	"crypto/subtle"
+	"errors"
 
 	"github.com/andskur/argon2-hashing"
 	"github.com/gin-gonic/gin"
@@ -23,6 +28,7 @@ import (
 )
 
 var logger = log.New()
+var errAuthFailed = errors.New("authentication_failed")
 
 func apiReturn(done bool, reason interface{}, context interface{}) gin.H {
 	if reason == "EOF" {
@@ -47,7 +53,34 @@ func apiReturn(done bool, reason interface{}, context interface{}) gin.H {
 	}
 }
 
+func authHandle(db *pgxpool.Pool, c *gin.Context, userId string) error {
+	var auth types.AuthHeader
+	if err := c.ShouldBindHeader(&auth); err != nil {
+		return err
+	}
+
+	var tokenCheck pgtype.Text
+
+	db.QueryRow(ctx, "SELECT token FROM users WHERE user_id = $1", userId, auth.Authorization).Scan(&tokenCheck)
+
+	// Basic timing checks. This is likely not superbly robust but should be enough for our use case and purposes
+	token := []byte(tokenCheck.String)
+
+	if subtle.ConstantTimeCompare(token, []byte(auth.Authorization)) == 1 && tokenCheck.Status == pgtype.Present {
+		return nil
+	}
+
+	return errAuthFailed
+}
+
 func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Client) {
+	// Compile alphanumeric regex
+	alphanumeric, err := regexp.Compile("^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+	if err != nil {
+		panic(err)
+	}
+
 	hub := newHub(db, rdb)
 	go hub.run()
 
@@ -69,6 +102,17 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			return
 		}
 
+		if !alphanumeric.MatchString(data.Username) {
+			c.JSON(400, apiReturn(false, "Invalid username. Usernames may only contain letters, numbers, hyphens and underscores!", nil))
+			return
+		}
+		if data.Email != "" {
+			if !strings.Contains(data.Email, "@") || !strings.Contains(data.Email, ".") {
+				c.JSON(400, apiReturn(false, "The email address you provided was not a well formed email address", nil))
+				return
+			}
+		}
+
 		boards := common.GetBoardList()
 
 		if boards == nil {
@@ -83,10 +127,10 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 
 		var userIdCheck pgtype.Text
 
-		db.QueryRow(ctx, "SELECT user_id::text FROM users WHERE username = $1", data.Username).Scan(&userIdCheck)
+		db.QueryRow(ctx, "SELECT user_id::text FROM users WHERE username = $1 OR email = $2", data.Username, data.Email).Scan(&userIdCheck)
 
 		if userIdCheck.Status == pgtype.Present {
-			c.JSON(400, apiReturn(false, "Username already taken!", nil))
+			c.JSON(400, apiReturn(false, "Username or email already taken!", nil))
 			return
 		}
 
@@ -108,7 +152,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 
 		var userId pgtype.Text
 
-		err = db.QueryRow(ctx, "INSERT INTO users (username, pass, token, preferences) VALUES ($1, $2, $3, $4) RETURNING user_id::text", data.Username, string(hash), token, string(preferences)).Scan(&userId)
+		err = db.QueryRow(ctx, "INSERT INTO users (username, pass, token, email, preferences) VALUES ($1, $2, $3, $4, $5) RETURNING user_id::text", data.Username, string(hash), token, data.Email, string(preferences)).Scan(&userId)
 
 		if err != nil {
 			c.JSON(409, apiReturn(false, err.Error(), nil))
@@ -140,10 +184,10 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		var token pgtype.Text
 		var passHash pgtype.Text
 		var loginAttempts pgtype.Int4
-		var preferences pgtype.Text
+		var preferences pgtype.JSONB
 
 		if data.Username != "" {
-			err = db.QueryRow(ctx, "SELECT user_id::text, pass, token, login_attempts, preferences::text FROM users WHERE username = $1", data.Username).Scan(&userId, &passHash, &token, &loginAttempts, &preferences)
+			err = db.QueryRow(ctx, "SELECT user_id::text, pass, token, login_attempts, preferences FROM users WHERE username = $1", data.Username).Scan(&userId, &passHash, &token, &loginAttempts, &preferences)
 			if err != nil {
 				log.Warn(err)
 				c.JSON(400, apiReturn(false, "Incorrect username", nil))
@@ -173,7 +217,8 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			return
 		}
 		db.Exec(ctx, "UPDATE users SET login_attempts = 0 WHERE user_id = $1", userId.String)
-		c.JSON(206, apiReturn(true, nil, gin.H{"user_id": userId.String, "token": token.String, "preferences": preferences.String}))
+
+		c.JSON(206, apiReturn(true, nil, gin.H{"user_id": userId.String, "token": token.String, "preferences": preferences}))
 	})
 
 	router.POST("/account/recovery", func(c *gin.Context) {
@@ -202,7 +247,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 				c.JSON(400, apiReturn(false, "Username does not exist!", nil))
 				return
 			}
-			if emailDb.Status == pgtype.Null {
+			if emailDb.Status == pgtype.Null || emailDb.String == "" {
 				c.JSON(400, apiReturn(false, "This user account does not have an associated recovery email address... Please click <a href='https://github.com/shiksha360-site/site/issues/new/choose'>here</a> and choose 'Account Recovery'", nil))
 				return
 			}
@@ -242,6 +287,24 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			return
 		}
 		c.Status(400)
+	})
+
+	router.PATCH("/videos/track", func(c *gin.Context) {
+		var data types.VideoTracker
+		err := c.ShouldBindJSON(&data)
+		if err != nil {
+			c.JSON(422, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		err = authHandle(db, c, data.UserId)
+
+		if err != nil {
+			c.JSON(401, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		c.JSON(200, gin.H{"test": true})
 	})
 
 	router.GET("/ws", func(c *gin.Context) {

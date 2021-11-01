@@ -3,7 +3,8 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@2.7.1"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="prod/base.min.js?v=8b8f500e6-805f-4e13-baea-7de4e7067e9c"></script>
+    <script src="prod/base.min.js?v=1f2dc9daf-345f-4e1a-82ae-3f6c9560bf2d"></script>
+    <script src="prod/login.min.js?v=1bb95acf4-7fc1-4048-8929-51d5d7e88c1c"></script>
 <script defer>
   $(document).ready(getToc)
 </script>
@@ -24,12 +25,27 @@
     <link href="https://cdn.jsdelivr.net/gh/djibe/material@4.6.0-rc.2/css/material-plugins.min.css" rel="stylesheet" crossorigin>
     
 
-    <link href="prod/base.min.css?v=8c56e413e-50e7-4266-ae40-1ea954e43f2e" rel="stylesheet"></link>
+    <link href="prod/base.min.css?v=16ce051e0-58fa-4677-ada2-44034acdde3f" rel="stylesheet"></link>
   <title>Shiksha360</title>
 </head>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarSupportedContent">
+      <ul class="navbar-nav" id="main-navbar">
+        <li class="nav-item active" id="navbar-login-check-item">
+          <a class="nav-link" id="navbar-login-check" href="#"></a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <script defer>
+    $(document).ready(loginCheck)
+  </script>
   <body>
   <h2 class="title text-center">Shiksha360</h2>
-      <h4 class="title text-center"><strong>Truly Hollistic Learning</strong></h4>
+    <h4 class="title text-center"><strong>Truly Hollistic Learning</strong></h4>
     <!-- Basic Modal -->
     <div class="modal fade" id="base-modal" tabindex="-1" aria-labelledby="base-modal-label">
       <div class="modal-dialog">
@@ -42,7 +58,7 @@
           </div>
           <div id="base-modal-body" class="modal-body">
           </div>
-          <div class="modal-footer">
+          <div id="base-modal-footer" class="modal-footer">
             <button class="btn btn-primary" data-dismiss="modal" aria-label="Close">Close</button>
           </div>
         </div>

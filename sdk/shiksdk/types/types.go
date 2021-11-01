@@ -45,6 +45,7 @@ type UserPreferences struct {
 type Register struct {
 	Username    string          `json:"username" binding:"required"`
 	Password    string          `json:"password" binding:"required"`
+	Email       string          `json:"email"`
 	Preferences UserPreferences `json:"preferences"`
 }
 
@@ -57,4 +58,15 @@ type Login struct {
 type AccountRecovery struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
+}
+
+type VideoTracker struct {
+	UserId    string `json:"user_id" binding:"required"`
+	VideoId   string `json:"video_id" binding:"required"`
+	Duration  int    `json:"duration" binding:"required"`
+	IsPlaying bool   `json:"is_playing" binding:"required"`
+}
+
+type AuthHeader struct {
+	Authorization string `header:"Authorization" binding:"required"`
 }
