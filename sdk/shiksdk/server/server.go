@@ -61,12 +61,14 @@ func authHandle(db *pgxpool.Pool, c *gin.Context, userId string) error {
 
 	var tokenCheck pgtype.Text
 
-	db.QueryRow(ctx, "SELECT token FROM users WHERE user_id = $1", userId, auth.Authorization).Scan(&tokenCheck)
+	db.QueryRow(ctx, "SELECT token FROM users WHERE user_id = $1", userId).Scan(&tokenCheck)
 
 	// Basic timing checks. This is likely not superbly robust but should be enough for our use case and purposes
 	token := []byte(tokenCheck.String)
 
-	if subtle.ConstantTimeCompare(token, []byte(auth.Authorization)) == 1 && tokenCheck.Status == pgtype.Present {
+	check := subtle.ConstantTimeCompare(token, []byte(auth.Authorization))
+
+	if check == 1 && tokenCheck.Status == pgtype.Present {
 		return nil
 	}
 
@@ -303,6 +305,54 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			c.JSON(401, apiReturn(false, err.Error(), nil))
 			return
 		}
+
+		var videoPreferencesDb pgtype.JSONB
+		var resAuthor pgtype.Text
+
+		db.QueryRow(ctx, "SELECT video_preferences FROM users WHERE user_id = $1", data.UserId).Scan(&videoPreferencesDb)
+		db.QueryRow(ctx, "SELECT resource_author FROM topic_resources WHERE resource_id = $1", data.ResourceId).Scan(&resAuthor)
+
+		if resAuthor.Status != pgtype.Present {
+			c.JSON(404, apiReturn(false, "Resource Not Found", nil))
+			return
+		}
+
+		var videoPreferences map[string]types.VideoPreferences
+		if videoPreferencesDb.Status == pgtype.Present {
+			err = videoPreferencesDb.AssignTo(&videoPreferences)
+
+			if err != nil {
+				c.JSON(400, apiReturn(false, err.Error(), nil))
+				return
+			}
+		}
+
+		resPref := videoPreferences[data.ResourceId]
+
+		if data.IFrame {
+			resPref.Views += 1
+			if data.FullyWatched {
+				resPref.TimesFullyWatched += 1
+			}
+		} else {
+			// TODO: Do all the other video tracking code here
+			if resPref.Progress < data.Duration {
+				resPref.Progress = data.Duration
+			}
+		}
+
+		resPref.ResourceAuthor = resAuthor.String
+
+		videoPreferences[data.ResourceId] = resPref
+
+		pgDat, err := json.Marshal(videoPreferences)
+
+		if err != nil {
+			c.JSON(400, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		db.Exec(ctx, "UPDATE users SET video_preferences = $1 WHERE user_id = $2", pgDat, data.UserId)
 
 		c.JSON(200, gin.H{"test": true})
 	})

@@ -14,25 +14,43 @@ function isMobile() {
     return $(window).width() < 600;
 }
 
-function trackYtProgress(event) {
-    videoId = event.player.getVideoData().video_url
-    if(localStorage.getItem("login-data")) {
-        loginData = JSON.parse(loginData)
-        fetch("/api/videos/track", {
-            method: "PATCH",
-            headers: {"Authorization": loginData.ctx.token},
-            body: JSON.stringify({
-                user_id: loginData.ctx.user_id,
-                video_id: videoId, 
-                duration: event.player.getCurrentTime(), 
-                is_playing: event.data == YT.PlayerState.PLAYING,
+function trackYtProgress(resource_id) {
+    return function(event) {
+        if(!event) {
+            target = videoInfo.player
+            data = target.getPlayerState()
+        }
+        else {
+            target = event.target
+            data = event.data
+        }
+        console.log(target.getCurrentTime())
+        loginData = localStorage.getItem("login-data")
+        if(loginData) {
+            if(data == YT.PlayerState.ENDED && !videoInfo.doneTracking) {
+                return
+            }
+            loginData = JSON.parse(loginData)
+            fetch("/api/videos/track", {
+                method: "PATCH",
+                headers: {"Authorization": loginData.ctx.token},
+                body: JSON.stringify({
+                    user_id: loginData.ctx.user_id,
+                    resource_id: resource_id, 
+                    duration: target.getCurrentTime(), 
+                    state: data,
+                    iframe: data == YT.PlayerState.ENDED,
+                    fully_watched: data == YT.PlayerState.ENDED
+                })
             })
-        })
+            videoInfo.doneTracking = true
+        }
     }
 }
 
 function videoIframeEvent(count) {
     console.log("Called iframe event")
+    videoInfo.doneTracking = false
     if(currintervalYt != -1) {
         clearInterval(currintervalYt)
         currintervalYt = -1
@@ -47,8 +65,22 @@ function videoIframeEvent(count) {
     modalShow(info.data.resource_title, html)
     waitForElm(`#${id}`)
     .then(() => {
-        playYt(id, trackYtProgress, trackYtProgress)
-        currintervalYt = setInterval(trackYtProgress, 3000)
+        func = trackYtProgress(info.data.resource_id)
+        playYt(id, func, func)
+        currintervalYt = setInterval(func, 10000)
+        loginData = localStorage.getItem("login-data")
+        if(loginData) {
+            loginData = JSON.parse(loginData)
+            fetch("/api/videos/track", {
+                method: "PATCH",
+                headers: {"Authorization": loginData.ctx.token},
+                body: JSON.stringify({
+                    user_id: loginData.ctx.user_id,
+                    resource_id: info.data.resource_id, 
+                    iframe: true,
+                })
+            })
+        }
     })
 }
 
