@@ -115,6 +115,9 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			}
 		}
 
+		data.Username = strings.ToLower(data.Username)
+		data.Email = strings.ToLower(data.Email)
+
 		boards := common.GetBoardList()
 
 		if boards == nil {
@@ -139,14 +142,14 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		// Argon2 hash the password
 		hash, err := argon2.GenerateFromPassword([]byte(data.Password), argon2.DefaultParams)
 		if err != nil {
-			c.JSON(409, apiReturn(false, err.Error(), nil))
+			c.JSON(400, apiReturn(false, err.Error(), nil))
 			return
 		}
 
 		preferences, err := json.Marshal(data.Preferences)
 
 		if err != nil {
-			c.JSON(409, apiReturn(false, err.Error(), nil))
+			c.JSON(400, apiReturn(false, err.Error(), nil))
 			return
 		}
 
@@ -157,11 +160,11 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		err = db.QueryRow(ctx, "INSERT INTO users (username, pass, token, email, preferences) VALUES ($1, $2, $3, $4, $5) RETURNING user_id::text", data.Username, string(hash), token, data.Email, string(preferences)).Scan(&userId)
 
 		if err != nil {
-			c.JSON(409, apiReturn(false, err.Error(), nil))
+			c.JSON(400, apiReturn(false, err.Error(), nil))
 			return
 		}
 
-		c.JSON(206, apiReturn(true, nil, gin.H{"user_id": userId.String, "token": token}))
+		c.JSON(206, apiReturn(true, nil, gin.H{"user_id": userId.String, "token": token, "preferences": data.Preferences}))
 	})
 
 	router.POST("/login", func(c *gin.Context) {
@@ -180,6 +183,9 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			c.JSON(400, apiReturn(false, "One of username OR email is requirred", nil))
 			return
 		}
+
+		data.Username = strings.ToLower(data.Username)
+		data.Email = strings.ToLower(data.Email)
 
 		// Get all fields
 		var userId pgtype.Text
@@ -237,6 +243,9 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			c.JSON(400, apiReturn(false, "One of username OR email is requirred", nil))
 			return
 		}
+
+		data.Username = strings.ToLower(data.Username)
+		data.Email = strings.ToLower(data.Email)
 
 		// Get the user id (and email) if needed
 		var userId pgtype.Text

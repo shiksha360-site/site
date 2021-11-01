@@ -96,7 +96,7 @@ function modalShow(title, body, deferRender) {
 	$("#base-modal-label").html(title)
 	$("#base-modal-body").html(body)
     modal = $("#base-modal")
-    if(!modal.attr("yt-eventlistener-added") && window["inChapter"]) {
+    if(!modal.attr("yt-eventlistener-added") && window["inChapter"] && videoInfo.player != null) {
         modal.on("hide.bs.modal", function() {
             console.log("Killing videos")
             videoInfo.player.stopVideo()
