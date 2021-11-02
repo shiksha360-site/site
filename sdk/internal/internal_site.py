@@ -8,7 +8,7 @@ from pydantic.main import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from sdk.fetcher.yt.api import Youtube
-from .models import Chapter, Grade, Board, Subject, GitOP, ResourceMetadata
+from .models import Chapter, Grade, Board, Subject, GitOP, ResourceMetadata, ResourceLang
 import asyncpg
 from lynxfall.utils.fastapi import api_success, api_error
 from sdk.create_new import create_new
@@ -415,6 +415,7 @@ async def new_resource(
     subject: Subject,
     chapter: int,
     resource_metadata: ResourceMetadata,
+    resource_lang: ResourceLang,
     topic_name_internal: str = Query(
         ...,
         description="Internal topic name. This must not have spaces, numbers or any special character other than hyphens and is not user-visible",
@@ -451,7 +452,7 @@ async def new_resource(
     )
 ):
     """Create a new video or edits an existing video"""
-    if topic_name_internal == "main" or subtopic_parent == "main":
+    if topic_name_internal == "main" and subtopic_parent == "main":
         return api_error("Illegal topic_name_internal and subtopic_parent!", status_code=404)
 
     subject = common.get_subject_name(grade, subject)
@@ -545,8 +546,8 @@ async def new_resource(
     id = await app.state.db.fetchval(
         """INSERT INTO topic_resources (grade, board, subject, chapter_num, chapter_iname, topic_iname, subtopic_parent,
         resource_type, resource_title, resource_description, resource_url, resource_author, resource_metadata, resource_id,
-        resource_icon) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING resource_id""",
+        resource_icon, resource_lang) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING resource_id""",
         grade,
         board,
         subject,
@@ -561,7 +562,8 @@ async def new_resource(
         resource_author,
         orjson.dumps(res_meta).decode("utf-8"),
         id,
-        resource_icon
+        resource_icon,
+        resource_lang.name
     )
 
     return api_success(repaired=repaired, id=str(id), force_200=True)

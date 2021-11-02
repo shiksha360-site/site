@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS topic_resources (
     resource_author TEXT NOT NULL, -- The author of a resource
     resource_icon TEXT NOT NULL, -- The resource icon
     resource_metadata jsonb NOT NULL DEFAULT '{}'::jsonb, -- Any metadata such as view counts etc
+    resource_lang text not null default 'en' -- The language
     disabled BOOLEAN DEFAULT FALSE -- Whether the resource is disabled or not
 );
 

@@ -383,22 +383,29 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			}
 		}
 
-		resPref := videoPreferences[data.ResourceId]
+		resPref := videoPreferences[data.ResourceId]                  // The resource he/she is watching
+		resPrefAuthor := videoPreferences["author:"+resAuthor.String] // The author he/she is watching
 
 		if data.IFrame {
 			resPref.Views += 1
+			resPrefAuthor.Views += 1
 			if data.FullyWatched {
 				resPref.TimesFullyWatched += 1
+				resPrefAuthor.TimesFullyWatched += 1
 			}
 		} else {
 			// TODO: Do all the other video tracking code here
+
+			// TIP: Progress only matters for videos, not authors
 			if resPref.Progress < data.Duration {
 				resPref.Progress = data.Duration
 			}
 		}
 
 		resPref.ResourceAuthor = resAuthor.String
+		resPrefAuthor.ResourceAuthor = resAuthor.String
 
+		videoPreferences["author:"+resAuthor.String] = resPrefAuthor
 		videoPreferences[data.ResourceId] = resPref
 
 		pgDat, err := json.Marshal(videoPreferences)

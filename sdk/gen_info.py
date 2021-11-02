@@ -224,7 +224,7 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
         def sort_by_view_count(d):
             return d["view_count"]
 
-        sql = "SELECT resource_url, resource_title, resource_type, resource_id, resource_author, resource_metadata, resource_description, resource_icon FROM topic_resources WHERE grade = $1 AND board = $2 AND subject = $3 AND chapter_iname = $4 AND topic_iname = $5 "
+        sql = "SELECT resource_url, resource_title, resource_type, resource_id, resource_author, resource_metadata, resource_description, resource_icon, resource_lang FROM topic_resources WHERE grade = $1 AND board = $2 AND subject = $3 AND chapter_iname = $4 AND topic_iname = $5 "
 
         args = [chapter_info["grade"], chapter_info["board"], chapter_info["subject"], chapter_info["iname"], topic]
 
@@ -277,7 +277,6 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
     main = await resource_parse(topic, None)
     with (build_chapter_dir / f"resources-{topic}-main.lynx").open("wb") as res_json:
         common.write_min(main, res_json)
-
 
     for subtopic in deepcopy(chapter_info["topics"][topic]["subtopics"]):            
         subtopic_res = await resource_parse(subtopic, topic)

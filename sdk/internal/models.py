@@ -19,6 +19,10 @@ class Grade(IntEnum):
     grade11 = 11
     grade12 = 12
 
+class ResourceLang(Enum):
+    en = "English"
+    hi = "Hindi"
+
 Board = Enum('Board', {
     k: k for k in (common.load_yaml("data/core/boards.yaml"))
 })

@@ -3,6 +3,10 @@ alreadyRendered = {}
 
 // Base Info (so we dont need huge function args)
 baseInfo = {}
+langData = {
+    "en": "English",
+    "hi": "Hindi"
+}
 
 // Global Counter
 var globCounter = 0
@@ -92,7 +96,7 @@ function videoRender(topic, subtopic, type, res, mobile_user, enumerator) {
         html = `<div class="video-container">`
         res[type].forEach((v) => {
             baseInfo[globCounter] = {"data": v, "topic": topic, "subtopic": subtopic, "enum": enumerator}
-            html += `<div onclick="videoIframeEvent('${globCounter}')" class="video-item"><img src="${v.resource_icon}" alt="${v.resource_description}"/><br/><small class="video-title">${v.resource_title}</small></div>`
+            html += `<div onclick="videoIframeEvent('${globCounter}')" class="video-item lang-${v.resource_lang}"><img src="${v.resource_icon}" alt="${v.resource_description}"/><br/><small class="video-title"><strong>${langData[v.resource_lang]}: </strong>${v.resource_title}</small></div>`
             globCounter += 1
         })
         html += "</div>"
@@ -191,8 +195,8 @@ function topicEventListener(body, topic, topicData, subtopic) {
             }
             console.log(subtopic)
             console.log("Started up debug code")
-            if(searchParams.get("debug") == "1" || !isProd) { // Change this during prod
-                data = JSON.stringify(r)
+            if((searchParams.get("debug") == "1" || !isProd) && searchParams.get("debug") != "0") { // Change this during prod
+                dbgData = JSON.stringify(r)
                 if(!isRendered) {
                     body.append(baseAccordian(`${topic}-dbg-accordian`))
                     addCard(`${topic}-dbg-accordian`, `${topic}-dbg`, "Debug")
@@ -200,7 +204,11 @@ function topicEventListener(body, topic, topicData, subtopic) {
                 }
                 $(`#${topic}-dbg-collapse-card`).on('show.bs.collapse', function (e) {
                     e.stopPropagation() // Ensure only childs event handler runs and not parent
-                    $(`#${topic}-dbg-body`).html(`<pre style="font-size: 12px;">${data}</pre>`)
+                    dbgBody = $(`#${topic}-dbg-body`)
+                    if(!dbgBody.attr("added-dbgdata")) {
+                        dbgBody.html(`<pre style="font-size: 12px;">${dbgData}</pre>`)
+                        dbgBody.attr("added-dbgdata", true)
+                    }
                 })
             }
             return r
@@ -239,7 +247,7 @@ function renderTopic() {
                 value.name = "Summary"
             }
             addCard("chapter-accordian", key, value.name)
-            setTimeout(() => createTopicEventListener(key, r), 1)
+            createTopicEventListener(key, r)
             alreadyRendered[`_${key}-card`] = true
         })
     })
