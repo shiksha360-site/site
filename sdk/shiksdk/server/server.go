@@ -53,6 +53,19 @@ func apiReturn(done bool, reason interface{}, context interface{}) gin.H {
 	}
 }
 
+func prefValidate(data types.UserPreferences) gin.H {
+	boards := common.GetBoardList()
+
+	if boards == nil {
+		return apiReturn(false, "Could not fetch board information", nil)
+	}
+
+	if !common.IsInList(boards, data.Board) {
+		return apiReturn(false, "Invalid Board", nil)
+	}
+	return nil
+}
+
 func authHandle(db *pgxpool.Pool, c *gin.Context, userId string) error {
 	var auth types.AuthHeader
 	if err := c.ShouldBindHeader(&auth); err != nil {
@@ -118,21 +131,20 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		data.Username = strings.ToLower(data.Username)
 		data.Email = strings.ToLower(data.Email)
 
-		boards := common.GetBoardList()
+		prefCheck := prefValidate(data.Preferences)
 
-		if boards == nil {
-			c.JSON(400, apiReturn(false, "Could not fetch board information", nil))
-			return
-		}
-
-		if !common.IsInList(boards, data.Preferences.Board) {
-			c.JSON(400, apiReturn(false, "Invalid Board", nil))
+		if prefCheck != nil {
+			c.JSON(400, prefCheck)
 			return
 		}
 
 		var userIdCheck pgtype.Text
 
-		db.QueryRow(ctx, "SELECT user_id::text FROM users WHERE username = $1 OR email = $2", data.Username, data.Email).Scan(&userIdCheck)
+		if data.Email != "" {
+			db.QueryRow(ctx, "SELECT user_id::text FROM users WHERE username = $1 OR email = $2", data.Username, data.Email).Scan(&userIdCheck)
+		} else {
+			db.QueryRow(ctx, "SELECT user_id::text FROM users WHERE username = $1", data.Username).Scan(&userIdCheck)
+		}
 
 		if userIdCheck.Status == pgtype.Present {
 			c.JSON(400, apiReturn(false, "Username or email already taken!", nil))
@@ -224,7 +236,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			c.JSON(400, apiReturn(false, "Incorrect password", nil))
 			return
 		}
-		db.Exec(ctx, "UPDATE users SET login_attempts = 0 WHERE user_id = $1", userId.String)
+		go db.Exec(ctx, "UPDATE users SET login_attempts = 0 WHERE user_id = $1", userId.String)
 
 		c.JSON(206, apiReturn(true, nil, gin.H{"user_id": userId.String, "token": token.String, "preferences": preferences}))
 	})
@@ -236,6 +248,7 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			c.JSON(422, apiReturn(false, err.Error(), nil))
 			return
 		}
+
 		if data.Username != "" && data.Email != "" {
 			c.JSON(400, apiReturn(false, "Only username OR email may be specified", nil))
 			return
@@ -274,11 +287,11 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 
 		// Send the reset email
 		resetToken := common.RandStringBytes(169)
-		rdb.Set(ctx, "recovery-"+resetToken, userId.String, 5*time.Minute)
+		go rdb.Set(ctx, "recovery-"+resetToken, userId.String, 5*time.Minute)
 
-		common.SendRecoveryEmail(userId.String, email, resetToken)
+		go common.SendRecoveryEmail(userId.String, email, resetToken)
 
-		c.JSON(200, apiReturn(true, "Sent recovery email. Check your spam folder if you didn't recieve it", nil))
+		c.JSON(200, apiReturn(true, "Sent recovery email. Check your spam folder if you didn't recieve it within a few minutes", nil))
 	})
 
 	// HEAD /account/recovery?user_id=USERID&token=TOKEN -> Checks whether or not a user_id, token combo is valid
@@ -298,6 +311,40 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			return
 		}
 		c.Status(400)
+	})
+
+	router.PATCH("/preferences", func(c *gin.Context) {
+		var data types.ModifyUserPreferences
+		err := c.ShouldBindJSON(&data)
+		if err != nil {
+			c.JSON(422, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		err = authHandle(db, c, data.UserId)
+
+		if err != nil {
+			c.JSON(401, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		prefCheck := prefValidate(data.Preferences)
+
+		if prefCheck != nil {
+			c.JSON(400, prefCheck)
+			return
+		}
+
+		preferences, err := json.Marshal(data.Preferences)
+
+		if err != nil {
+			c.JSON(400, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		go db.Exec(ctx, "UPDATE users SET preferences = $1 WHERE user_id = $2", string(preferences), data.UserId)
+
+		c.JSON(200, apiReturn(true, nil, nil))
 	})
 
 	router.PATCH("/videos/track", func(c *gin.Context) {
@@ -361,9 +408,9 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 			return
 		}
 
-		db.Exec(ctx, "UPDATE users SET video_preferences = $1 WHERE user_id = $2", pgDat, data.UserId)
+		go db.Exec(ctx, "UPDATE users SET video_preferences = $1 WHERE user_id = $2", pgDat, data.UserId)
 
-		c.JSON(200, gin.H{"test": true})
+		c.JSON(200, apiReturn(true, nil, nil))
 	})
 
 	router.GET("/ws", func(c *gin.Context) {

@@ -42,6 +42,11 @@ type UserPreferences struct {
 	Board string `json:"board" binding:"required"`                          // The board must be manually validated for now using common.GetBoardList
 }
 
+type ModifyUserPreferences struct {
+	UserId      string          `json:"user_id" binding:"required"` // Required field. This is the user id to track
+	Preferences UserPreferences `json:"preferences"`                // The user preferences (grade and board) of a user
+}
+
 type Register struct {
 	Username    string          `json:"username"`                    // The username of the new account. Either username or email must be present. It is up to the client to decide this
 	Email       string          `json:"email"`                       // The email of the new account. Either username or email must be present. It is up to the client to decide this
