@@ -1,0 +1,27 @@
+{% extends "_base.jinja2" %}
+
+{% block head %}
+<script defer>
+  $(document).ready(function() {
+    loginData = localStorage.getItem("login-data")
+    if(!loginData) window.location.href = "/"
+    loginData = JSON.parse(loginData)
+    $("#username").html(loginData.username)
+    $("#user-id").html(loginData.ctx.user_id)
+  })
+</script>
+{% endblock %}
+
+{% block title %}
+  <title>My Profile</title>
+{% endblock %}
+
+{% block header %}
+  {{ super() }}
+  <h3>Username: <span id="username"></span></h3>
+  <h4>User ID: <span id="user-id"></span</h4>
+{% endblock %}
+
+{% block content %}
+  {{ super() }}
+{% endblock %}

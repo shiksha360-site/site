@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -20,25 +18,15 @@ import (
 )
 
 var (
+	dirname   string
 	db        *pgxpool.Pool
 	rdb       *redis.Client
-	errLog    string
 	blockExit bool = false // Whether or not shutdown should be blocked to allow services to cleanup (uvicorn needs this)
 )
 
 var sigs = make(chan os.Signal, 1)
 
 var commands = make(map[string]types.Command)
-
-func streamOutput(pipe io.ReadCloser) {
-	reader := bufio.NewReader(pipe)
-	line, err := reader.ReadString('\n')
-	for err == nil {
-		errLog += line + "\n"
-		fmt.Print(line)
-		line, err = reader.ReadString('\n')
-	}
-}
 
 func init() {
 	lvl, ok := os.LookupEnv("LOG_LEVEL")
@@ -51,27 +39,47 @@ func init() {
 	}
 	log.SetLevel(ll)
 
+	dirname, err = os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	err = os.Chdir(dirname + "/site")
+
+	if err != nil {
+		panic(err)
+	}
+
 	// Populate command list
 	commands["devserver"] = types.Command{
 		Description: "Run the internal api",
 		Handler: func(cmd []string) {
 			log.Info("Running python3.10 sdk/_devserver.py")
 			blockExit = true
-			dirname := cmd[0]
 			os.Setenv("_DEV", "1")
-			os.Chdir(dirname + "/site")
 
 			devserver := exec.Command(dirname+"/venv/bin/python3.10", "sdk/_devserver.py")
 			devserver.Env = os.Environ()
 			devserver.Stdout = os.Stdout
-			stderr, _ := devserver.StderrPipe()
+
+			// https://stackoverflow.com/questions/30993717/how-can-i-redirect-the-stdout-and-stderr-of-a-command-to-both-the-console-and-a
+
+			// Logging capability
+			f, err := os.OpenFile("devserver.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+			if err != nil {
+				log.Fatalf("Error opening file: %v", err)
+			}
+			defer f.Close()
+			mwriter := io.MultiWriter(f, os.Stdout)
+
+			devserver.Stderr = mwriter
 
 			if err := devserver.Start(); err != nil {
 				log.Fatal(err)
 				return
 			}
 
-			go streamOutput(stderr)
 			devserver.Wait()
 		},
 	}
@@ -80,10 +88,6 @@ func init() {
 		Description: "Runs the main server for Shiksha360",
 		Handler: func(cmd []string) {
 			dbSetupAndCleanup()
-
-			dirname := cmd[0]
-
-			os.Chdir(dirname + "/site")
 
 			os.Remove(dirname + "/shiksha.sock")
 
@@ -120,14 +124,8 @@ func main() {
 		os.Exit(-1)
 	}
 
-	dirname, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
 	if val, ok := commands[os.Args[1]]; ok {
-		go val.Handler(append(os.Args[2:], dirname))
+		go val.Handler(os.Args[1:])
 	} else {
 		log.Fatal("Invalid command! Command must be one of: ", common.GetCmdKeys(commands))
 		return

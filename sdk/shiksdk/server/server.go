@@ -313,6 +313,43 @@ func StartServer(prefix string, dirname string, db *pgxpool.Pool, rdb *redis.Cli
 		c.Status(400)
 	})
 
+	router.PATCH("/account/recovery", func(c *gin.Context) {
+		userId := c.Query("user_id")
+		token := c.Query("token")
+
+		if token == "" || userId == "" {
+			c.Status(422)
+			return
+		}
+
+		var pass types.RecoverPass
+		err := c.ShouldBindJSON(&pass)
+		if err != nil {
+			c.JSON(422, apiReturn(false, err.Error(), nil))
+			return
+		}
+
+		data := rdb.Get(ctx, "recovery-"+token).Val()
+		log.Info(data, userId)
+		if data == userId {
+			// Argon2 hash the password
+			hash, err := argon2.GenerateFromPassword([]byte(pass.Password), argon2.DefaultParams)
+			if err != nil {
+				c.JSON(400, apiReturn(false, err.Error(), nil))
+				return
+			}
+
+			_, err = db.Exec(ctx, "UPDATE users SET pass = $1 WHERE user_id = $2", hash, userId)
+			if err != nil {
+				log.Error(err)
+				c.Status(500)
+			}
+			c.Status(200)
+			return
+		}
+		c.Status(400)
+	})
+
 	router.PATCH("/preferences", func(c *gin.Context) {
 		var data types.ModifyUserPreferences
 		err := c.ShouldBindJSON(&data)

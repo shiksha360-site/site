@@ -1,6 +1,5 @@
 resourceTypeData = {}
 alreadyRendered = {}
-
 // Base Info (so we dont need huge function args)
 baseInfo = {}
 langData = {
@@ -28,12 +27,12 @@ function trackYtProgress(resource_id) {
             target = event.target
             data = event.data
         }
+
+        console.log(videoInfo)
+
         console.log(target.getCurrentTime())
         loginData = localStorage.getItem("login-data")
         if(loginData) {
-            if(data == YT.PlayerState.ENDED && !videoInfo.doneTracking) {
-                return
-            }
             loginData = JSON.parse(loginData)
             fetch("/api/videos/track", {
                 method: "PATCH",
@@ -47,14 +46,20 @@ function trackYtProgress(resource_id) {
                     fully_watched: data == YT.PlayerState.ENDED
                 })
             })
-            videoInfo.doneTracking = true
+            if(data == YT.PlayerState.ENDED || videoInfo.doneTracking) {
+                videoInfo.doneTracking = true
+                clearInterval(videoInfo.tracker)
+                return
+            }
         }
     }
 }
 
 function videoIframeEvent(count) {
     console.log("Called iframe event")
+    clearInterval(videoInfo.tracker)
     videoInfo.doneTracking = false
+    videoInfo.isInNewVideo = true
     if(currintervalYt != -1) {
         clearInterval(currintervalYt)
         currintervalYt = -1
@@ -72,6 +77,7 @@ function videoIframeEvent(count) {
         func = trackYtProgress(info.data.resource_id)
         playYt(id, func, func)
         currintervalYt = setInterval(func, 10000)
+        videoInfo.tracker = currintervalYt
         loginData = localStorage.getItem("login-data")
         if(loginData) {
             loginData = JSON.parse(loginData)
@@ -90,6 +96,7 @@ function videoIframeEvent(count) {
 
 function videoRender(topic, subtopic, type, res, mobile_user, enumerator) {
     let id =`${topic}-${subtopic}-${type}`
+    console.log(id)
     let body = $(`#${id}`)
     let html = ""
     if(!mobile_user) {

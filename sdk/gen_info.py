@@ -249,7 +249,7 @@ async def parse_topic(db: asyncpg.Pool, yt: Youtube, chapter_info: dict, topic: 
             dat[-1]["resource_id"] = str(dat[-1]["resource_id"])
             dat[-1]["resource_metadata"] = orjson.loads(dat[-1]["resource_metadata"])
 
-            pos = dat[-1]["resource_metadata"].get("override_pos", i)
+            pos = dat[-1]["resource_metadata"].get("override_pos", 1)
 
             # 0, 1, 2, 3, 4, 5, 6, 7, 8 O-> 6, 9, 10
 

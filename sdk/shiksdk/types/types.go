@@ -65,6 +65,10 @@ type AccountRecovery struct {
 	Email    string `json:"email"`    // The username of the account. Either username or email must be present. It is up to the client to decide this
 }
 
+type RecoverPass struct {
+	Password string `json:"password" binding:"required"`
+}
+
 type VideoTracker struct {
 	UserId       string  `json:"user_id" binding:"required"`     // Required field. This is the user id to track
 	ResourceId   string  `json:"resource_id" binding:"required"` // Required field. This is the resource id to track

@@ -10,7 +10,8 @@ videoInfo = {
     apiReady: false,
     player: null,
     target: null,
-    doneTracking: false
+    doneTracking: false,
+    tracker: 0
 }
 
 function playYt(divId, startCallback, stateCallback) {

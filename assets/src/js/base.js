@@ -99,6 +99,8 @@ function modalShow(title, body, deferRender) {
     if(!modal.attr("yt-eventlistener-added") && window["inChapter"] && videoInfo.player != null) {
         modal.on("hide.bs.modal", function() {
             console.log("Killing videos")
+            videoInfo.doneTracking = true
+            clearInterval(videoInfo.tracker)
             videoInfo.player.stopVideo()
         })
         modal.attr("yt-eventlistener-added", true)
