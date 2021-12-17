@@ -17,6 +17,19 @@ type WebsocketIdentifyPayload struct {
 	SendNone bool   `json:"send_none"` // Send none status
 }
 
+type WebsocketClientPayloadData struct {
+	ContentType string      `json:"content-type"`
+	Content     string      `json:"content"`
+	Extra       interface{} `json:"extra,omitempty"`
+}
+
+// WebsocketClientPayload is a payload that is sent by a client
+type WebsocketClientPayload struct {
+	Code      string                     `json:"code"`
+	Timestamp float64                    `json:"ts"`
+	Data      WebsocketClientPayloadData `json:"data"`
+}
+
 type WebsocketPayload struct {
 	Code              string  `json:"code"`
 	Detail            string  `json:"detail"`

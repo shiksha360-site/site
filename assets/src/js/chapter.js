@@ -1,5 +1,6 @@
 resourceTypeData = {}
 alreadyRendered = {}
+ranExplore = false
 // Base Info (so we dont need huge function args)
 baseInfo = {}
 langData = {
@@ -241,27 +242,45 @@ function createTopicEventListener(key, r) {
     }
 }
 
+function _render(r, key, value) {
+    console.log(key, r.topics, r.topics["explore"])
+    if(r.topics["explore"]) {
+        //if(!ranExplore) {
+        //    _render(r, "explore", r.topics["explore"])
+        //}
+    }
+    if(key == "main") {
+        value.name = "Introduction"
+    }
+    else if (key == "summary") {
+        value.name = "Summary"
+    }
+    else if (key == "explore") {
+        console.log("Got explore")
+        if(ranExplore) {
+            return
+        }
+        ranExplore = true
+    }
+    addCard("chapter-accordian", key, value.name)
+    createTopicEventListener(key, r)
+    alreadyRendered[`_${key}-card`] = true
+}
+
 function renderTopic() {
     $("#toc").append(baseAccordian("chapter-accordian"))
     fetch(`/data/grades/${baseInfo.grade}/${baseInfo.board}/${baseInfo.subject}/${baseInfo.chapter}/info.lynx`)
     .then(r => parseLynx(r))
     .then(r => {
-        Object.entries(r.topics).forEach(([key, value]) => {
-            if(key == "main") {
-                value.name = "Introduction"
-            }
-            else if (key == "summary") {
-                value.name = "Summary"
-            }
-            addCard("chapter-accordian", key, value.name)
-            createTopicEventListener(key, r)
-            alreadyRendered[`_${key}-card`] = true
+        ranExplore = false
+        Object.entries(r.topics).forEach(function([key, value]) {
+            _render(r, key, value)
         })
     })
     .then(() => {
         $("#load-title").css("display", "none")
     })
-    .catch(() => $("#toc").html("Something went wrong... Check your URL?"))
+    .catch((err) => $("#toc").html(`Something went wrong... Check your URL? ${err}`))
 }
 
 function chapterPane() {

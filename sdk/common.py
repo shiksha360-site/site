@@ -21,8 +21,8 @@ class Resource(Enum):
     class_note = 4, "Class notes" # Class Notes
     revision_note = 5, "Revision Notes" # Revision Notes
     mock_test = 6, "Take A Test" # Take a test
-    real_world = 7, "Real World" # Discovery (How's It Made/Mythbuster)
-    problem_solving = 8, "Problem solving" # Problem Solving
+    real_world = 7, "Exploration" # Discovery (How's It Made/Mythbuster)
+    problem_solving = 8, "Problem Solving" # Problem Solving
 
 def create_resource_type_list() -> dict:
     resource_types = {}
